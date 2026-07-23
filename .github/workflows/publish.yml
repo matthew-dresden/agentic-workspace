@@ -1,13 +1,16 @@
 name: Publish to PyPI
 
-# DISABLED: requires PyPI credentials; see tracking issue.
-# on:
-#   workflow_dispatch:
-#     inputs:
-#       tag:
-#         description: "Tag to publish (e.g., 1.5.0)"
-#         required: true
-#         type: string
+# Publishes to PyPI via Trusted Publishing (OIDC) -- no API token is stored.
+# Authentication comes from the `pypi` GitHub environment plus the
+# `id-token: write` permission on the publish job, which PyPI verifies against
+# the Trusted Publisher registered for this project.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g., 1.5.0)"
+        required: true
+        type: string
 
 concurrency:
   group: release-pipeline
@@ -182,58 +185,3 @@ jobs:
           skip-existing: true
           attestations: false
 
-      - name: Send success notification to Slack
-        if: success()
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          payload: |
-            {
-              "text": "✅ PyPI Publish Successful",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "✅ PyPI Publish Successful"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Version ${{ env.TAG_VERSION }} has been successfully published to PyPI.\n\n<https://pypi.org/p/agentic-workspace|View on PyPI> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
-
-      - name: Send failure notification to Slack
-        if: failure()
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          payload: |
-            {
-              "text": "❌ PyPI Publish Failed",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "❌ PyPI Publish Failed"
-                  }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Failed to publish version ${{ env.TAG_VERSION }} to PyPI.\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View error details>"
-                  }
-                }
-              ]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
