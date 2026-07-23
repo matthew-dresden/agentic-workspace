@@ -186,7 +186,7 @@ mkdir -p /tmp/test-catalog-url-tag
 cd /tmp/test-catalog-url-tag
 
 # Run setup pinned to a specific tag
-workspace setup-devcontainer --catalog-url "https://github.com/matthew-dresden/agentic-workspace.git@2.0.0" .
+workspace setup-devcontainer --catalog-url "https://github.com/matthew-dresden/agentic-workspace.git@0.1.0" .
 # Should clone from the specified tag
 
 # Verify files were created

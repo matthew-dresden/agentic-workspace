@@ -162,7 +162,7 @@ class TestDiscoverEntriesEndToEnd(TestCase):
                         "description": "Full metadata test",
                         "tags": ["python", "aws"],
                         "maintainer": "platform-team",
-                        "min_cli_version": "2.0.0",
+                        "min_cli_version": "0.1.0",
                     },
                 },
             )
@@ -173,7 +173,7 @@ class TestDiscoverEntriesEndToEnd(TestCase):
             self.assertEqual(entry.description, "Full metadata test")
             self.assertEqual(entry.tags, ["python", "aws"])
             self.assertEqual(entry.maintainer, "platform-team")
-            self.assertEqual(entry.min_cli_version, "2.0.0")
+            self.assertEqual(entry.min_cli_version, "0.1.0")
 
     def test_skips_entries_with_invalid_json(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -374,7 +374,7 @@ class TestValidateCatalogEndToEnd(TestCase):
                         "description": "Default dev environment",
                         "tags": ["general"],
                         "maintainer": "Platform Team",
-                        "min_cli_version": "2.0.0",
+                        "min_cli_version": "0.1.0",
                     },
                     f,
                 )

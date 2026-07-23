@@ -243,8 +243,8 @@ class TestDefaultCatalogEntryJson(TestCase):
         self.assertEqual(self.entry_data["maintainer"], "Agentic Workspace Maintainers")
 
     def test_min_cli_version_is_set(self):
-        """min_cli_version must be set to 2.0.0."""
-        self.assertEqual(self.entry_data["min_cli_version"], "2.0.0")
+        """min_cli_version must be set to 0.1.0."""
+        self.assertEqual(self.entry_data["min_cli_version"], "0.1.0")
 
     def test_validate_catalog_entry_passes(self):
         """validate_catalog_entry() must return no errors."""
@@ -256,7 +256,7 @@ class TestDefaultCatalogEntryJson(TestCase):
         entry = CatalogEntry.from_dict(self.entry_data)
         self.assertEqual(entry.name, "default")
         self.assertEqual(entry.maintainer, "Agentic Workspace Maintainers")
-        self.assertEqual(entry.min_cli_version, "2.0.0")
+        self.assertEqual(entry.min_cli_version, "0.1.0")
 
 
 class TestProjectSetupShLifecycle(TestCase):

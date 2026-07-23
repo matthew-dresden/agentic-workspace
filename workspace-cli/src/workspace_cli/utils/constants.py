@@ -19,7 +19,7 @@ SSH_KEY_FILENAME = "ssh-private-key"
 DEFAULT_CATALOG_URL = "https://github.com/matthew-dresden/agentic-workspace.git"
 
 # Minimum catalog tag version — the CLI resolves the latest semver tag >= this value
-MIN_CATALOG_TAG_VERSION = "2.0.0"
+MIN_CATALOG_TAG_VERSION = "0.1.0"
 
 # Catalog structure constants
 CATALOG_COMMON_DIR = "common"

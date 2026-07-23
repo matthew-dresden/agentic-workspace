@@ -154,13 +154,13 @@ pipx install agentic-workspace
 You can also install a specific version:
 
 ```bash
-pipx install agentic-workspace==2.0.0
+pipx install agentic-workspace==0.1.0
 ```
 
 To install directly from GitHub (alternative method):
 
 ```bash
-pipx install git+https://github.com/matthew-dresden/agentic-workspace.git@2.0.0#subdirectory=workspace-cli
+pipx install git+https://github.com/matthew-dresden/agentic-workspace.git@0.1.0#subdirectory=workspace-cli
 ```
 
 If you don't have pipx installed, install it first:

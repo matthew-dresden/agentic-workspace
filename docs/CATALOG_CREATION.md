@@ -132,7 +132,7 @@ This file defines the entry's metadata:
   "description": "A devcontainer configuration for my team's projects",
   "tags": ["python", "aws"],
   "maintainer": "team@example.com",
-  "min_cli_version": "2.0.0"
+  "min_cli_version": "0.1.0"
 }
 ```
 
@@ -252,7 +252,7 @@ The CLI relies on semver tags for deterministic, reproducible behavior.
 When `WORKSPACE_CATALOG_URL` is **not set**, the CLI:
 1. Runs `git ls-remote --tags` against the default catalog
 2. Finds all tags matching semver format (X.Y.Z)
-3. Filters for tags >= `2.0.0`
+3. Filters for tags >= `0.1.0`
 4. Selects the highest version
 5. Clones that specific tag
 
@@ -367,13 +367,13 @@ This separation ensures:
 
 ## Troubleshooting
 
-### "No catalog tags >= 2.0.0 found"
+### "No catalog tags >= 0.1.0 found"
 
-The CLI could not find any semver tags in the catalog repository. Ensure you have pushed at least one tag >= `2.0.0`:
+The CLI could not find any semver tags in the catalog repository. Ensure you have pushed at least one tag >= `0.1.0`:
 
 ```bash
-git tag -a 2.0.0 -m "Initial release"
-git push origin 2.0.0
+git tag -a 0.1.0 -m "Initial release"
+git push origin 0.1.0
 ```
 
 ### "Entry 'name' not found"

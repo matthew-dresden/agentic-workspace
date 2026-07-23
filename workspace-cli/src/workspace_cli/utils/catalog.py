@@ -274,10 +274,10 @@ def resolve_latest_catalog_tag(clone_url: str, min_version: str) -> str:
 
     Args:
         clone_url: The git clone URL to query.
-        min_version: Minimum semver version to consider (e.g. ``"2.0.0"``).
+        min_version: Minimum semver version to consider (e.g. ``"0.1.0"``).
 
     Returns:
-        The tag name of the latest compatible version (e.g. ``"2.1.0"``).
+        The tag name of the latest compatible version (e.g. ``"0.2.0"``).
 
     Raises:
         SystemExit: If ``git ls-remote`` fails or no compatible tags are found.
@@ -308,7 +308,7 @@ def resolve_latest_catalog_tag(clone_url: str, min_version: str) -> str:
     if not candidates:
         raise SystemExit(
             f"No catalog tags >= {min_version} found in '{clone_url}'. "
-            "Ensure the catalog repository has semver tags (e.g. 2.0.0)."
+            "Ensure the catalog repository has semver tags (e.g. 0.1.0)."
         )
 
     candidates.sort(key=lambda t: tuple(int(x) for x in t.split(".")))
@@ -323,7 +323,7 @@ def resolve_default_catalog_url() -> str:
 
     Returns:
         The default catalog URL with a tag ref (e.g.
-        ``"https://github.com/matthew-dresden/agentic-workspace.git@2.1.0"``).
+        ``"https://github.com/matthew-dresden/agentic-workspace.git@0.2.0"``).
 
     Raises:
         SystemExit: If no compatible tags are found.

@@ -49,7 +49,7 @@ The CLI requires IDE command-line tools to launch projects:
 pipx install agentic-workspace
 
 # Install from GitHub with a specific version tag
-pipx install git+https://github.com/matthew-dresden/agentic-workspace.git@2.0.0#subdirectory=workspace-cli
+pipx install git+https://github.com/matthew-dresden/agentic-workspace.git@0.1.0#subdirectory=workspace-cli
 
 # If you don't have pipx installed, install it first:
 python -m pip install pipx
@@ -100,7 +100,7 @@ Enter your choice [1]:
 - **Skip mechanisms**: Use `--skip-update-check` flag or set `WORKSPACE_SKIP_UPDATE=1`
 
 **Environment Variables:**
-- `WORKSPACE_CATALOG_URL`: Override the default catalog repository URL (e.g., `https://github.com/org/custom-catalog.git@v1.0`). When not set, the CLI auto-resolves the latest semver tag >= 2.0.0 from the default catalog repository. See [Catalog Tagging](#catalog-tagging).
+- `WORKSPACE_CATALOG_URL`: Override the default catalog repository URL (e.g., `https://github.com/org/custom-catalog.git@v1.0`). When not set, the CLI auto-resolves the latest semver tag >= 0.1.0 from the default catalog repository. See [Catalog Tagging](#catalog-tagging).
 - `WORKSPACE_SKIP_UPDATE=1`: Globally disable all automatic update checks
 - `WORKSPACE_DEBUG_UPDATE=1`: Enable debug logging for update check process
 
@@ -241,9 +241,9 @@ The `catalog validate` command performs comprehensive structural and content che
 
 ### Catalog Tagging
 
-All catalog repositories should use semver tags (e.g. `2.0.0`, `2.1.0`) for releases. The CLI relies on tags for deterministic, reproducible behavior:
+All catalog repositories should use semver tags (e.g. `0.1.0`, `0.2.0`) for releases. The CLI relies on tags for deterministic, reproducible behavior:
 
-- **Default catalog**: When `WORKSPACE_CATALOG_URL` is not set, the CLI queries `git ls-remote --tags` against the default catalog and selects the latest semver tag >= `2.0.0`. This ensures the CLI always clones a known release rather than the default branch.
+- **Default catalog**: When `WORKSPACE_CATALOG_URL` is not set, the CLI queries `git ls-remote --tags` against the default catalog and selects the latest semver tag >= `0.1.0`. This ensures the CLI always clones a known release rather than the default branch.
 - **Custom catalogs**: When setting `WORKSPACE_CATALOG_URL`, use the `@tag` suffix to pin to a specific version (e.g., `https://github.com/org/catalog.git@1.2.0`). Without a tag suffix, the default branch is cloned.
 
 **Recommendations for catalog maintainers:**
