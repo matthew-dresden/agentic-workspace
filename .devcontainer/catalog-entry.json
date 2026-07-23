@@ -1,0 +1,15 @@
+{
+  "name": "default",
+  "description": "General-purpose development environment with Python, Node.js, AWS CLI, Docker, Kubernetes tools, and Claude Code. Optimized for corporate proxy environments.",
+  "tags": [
+    "general",
+    "multi-language",
+    "aws",
+    "kubernetes",
+    "claude",
+    "proxy"
+  ],
+  "maintainer": "Agentic Workspace Maintainers",
+  "min_cli_version": "2.0.0",
+  "catalog_url": "https://github.com/matthew-dresden/agentic-workspace.git"
+}

@@ -1,0 +1,11 @@
+# This file defines code owners for the repository
+# Code owners will be automatically requested for review on pull requests
+
+# Default owners for everything in the repo
+* @matthew-dresden
+
+# CLI specific code
+/workspace-cli/ @matthew-dresden
+
+# GitHub Actions workflows
+/.github/workflows/ @matthew-dresden

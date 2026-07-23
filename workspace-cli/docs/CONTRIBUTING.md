@@ -1,0 +1,199 @@
+# Contributing to Agentic Workspace CLI
+
+Thank you for your interest in contributing to the Agentic Workspace CLI! This document provides guidelines and instructions for contributing to this project.
+
+## Development Setup
+
+The recommended way to set up your development environment is to use the devcontainer itself:
+
+1. Ensure you have the [prerequisites](../README.md#-prerequisites) installed:
+   - VS Code (latest version)
+   - Docker Desktop
+   - Dev Containers extension for VS Code (latest version)
+
+2. Clone the repository:
+   ```bash
+   git clone https://github.com/matthew-dresden/agentic-workspace.git
+   cd devcontainer
+   ```
+
+3. Set up git hooks to ensure code quality:
+   ```bash
+   make configure
+   ```
+
+   This will:
+   - Install pre-commit using asdf (or pip if asdf is not available)
+   - Set up git hooks that:
+     - Prevent secrets from being committed (AWS credentials, private keys)
+     - Automatically format code in the CLI subdirectory
+     - Ensure tests and linting pass before pushing CLI changes
+
+4. Launch VS Code with the devcontainer:
+   ```bash
+   # If you already have the CLI installed
+   workspace code .
+
+   # Or open VS Code manually and reopen in container when prompted
+   code .
+   ```
+
+5. For CLI development, install the package in development mode:
+   ```bash
+   cd workspace-cli
+   make install
+   ```
+
+For more detailed setup instructions, see the [Quick Start](../README.md#-quick-start) guide in the main README.
+
+## Code Style and Quality
+
+We use the following tools to maintain code quality:
+
+- **Ruff**: For code formatting and linting (replaces black, isort, flake8)
+- **yamllint**: For YAML validation and formatting
+
+Before submitting a pull request, ensure your code passes all style checks:
+
+```bash
+make lint
+```
+
+If there are any issues, you can automatically fix most of them with:
+
+```bash
+make format
+```
+
+### Repository-Wide Quality Checks
+
+From the repository root, you can run comprehensive quality checks:
+
+```bash
+# Run all pre-commit checks (includes YAML validation, security scanning, etc.)
+make pre-commit-check
+
+# Check GitHub workflow YAML files specifically
+make github-workflow-yaml-lint
+
+# Fix YAML formatting and validation issues
+make yaml-fix
+```
+
+These checks run automatically in CI/CD and include trailing whitespace removal, debug statement detection, JSON/YAML validation, security scanning, and more.
+
+## Commit Message Conventions
+
+This project follows [Conventional Commits](https://www.conventionalcommits.org/) specification for commit messages. This enables automatic semantic versioning and changelog generation.
+
+### Commit Message Format
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Supported Commit Types
+
+| Type | Description | Version Bump | Example |
+|------|-------------|--------------|---------|
+| `feat` | New feature | **Minor** (1.2.0 → 1.3.0) | `feat: add new command option` |
+| `fix` | Bug fix | **Patch** (1.2.0 → 1.2.1) | `fix: resolve parsing error` |
+| `perf` | Performance improvement | **Patch** (1.2.0 → 1.2.1) | `perf: optimize file processing` |
+| `security` | Security fix | **Patch** (1.2.0 → 1.2.1) | `security: fix path traversal vulnerability` |
+| `revert` | Revert previous change | **Patch** (1.2.0 → 1.2.1) | `revert: undo feature X implementation` |
+| `build` | Build system changes | No bump | `build: update dependencies` |
+| `chore` | Maintenance tasks | No bump | `chore: update documentation` |
+| `ci` | CI/CD changes | No bump | `ci: add workflow caching` |
+| `docs` | Documentation changes | No bump | `docs: update API examples` |
+| `refactor` | Code refactoring | No bump | `refactor: simplify error handling` |
+| `style` | Code style changes | No bump | `style: fix formatting` |
+| `test` | Test changes | No bump | `test: add unit tests for parser` |
+
+### Breaking Changes
+
+Any commit with `BREAKING CHANGE:` in the footer will trigger a **Major** version bump (1.2.0 → 2.0.0), regardless of the commit type:
+
+```
+feat: change API interface
+
+BREAKING CHANGE: The parse() function now returns a different data structure
+```
+
+### Examples
+
+- `feat: add support for custom templates`
+- `fix: handle missing configuration files gracefully`
+- `perf: cache parsed templates for better performance`
+- `docs: add troubleshooting section to README`
+- `chore(deps): update semantic-release to v4.0.0`
+
+## Testing
+
+### Unit Tests
+
+Unit tests are located in the `tests/unit` directory. They test individual components of the code in isolation.
+
+To run unit tests:
+
+```bash
+make unit-test
+```
+
+### Functional Tests
+
+Functional tests are located in the `tests/functional` directory. They test the CLI commands as they would be used by actual users.
+
+To run functional tests:
+
+```bash
+make functional-test
+```
+
+To see a report of functional test coverage:
+
+```bash
+make functional-test-report
+```
+
+### Test Requirements
+
+- **Unit Tests**: Must maintain at least 90% code coverage
+- **Functional Tests**: Must test all CLI commands and common error scenarios
+- All tests must pass before merging code
+
+## Adding New Features
+
+When adding new features:
+
+1. Create unit tests for all new code
+2. Create functional tests that test the feature from a user's perspective
+3. Update documentation in the README.md file
+4. Update help text in the CLI commands
+
+## Pull Request Process
+
+1. Fork the repository on GitHub
+2. Create a feature branch: `git checkout -b feat/my-change`
+3. Implement your changes with appropriate tests
+4. Ensure all tests pass and code meets style guidelines
+5. Submit a pull request with a clear description of the changes
+
+## Release Process
+
+### Automated Release
+
+The release pipeline is fully automated. When changes are merged to `main`, the CI pipeline validates the code, then determines whether a release is needed based on conventional commit types. Only commits that trigger a version bump (`feat`, `fix`, `perf`, `security`, `revert`, or `BREAKING CHANGE`) will produce a release. Commits with non-bumping types (`docs`, `chore`, `ci`, `refactor`, `style`, `test`, `build`) pass validation but skip the release step entirely.
+
+When a release is triggered, the pipeline computes the next semantic version, generates the changelog, creates and merges a release PR, tags the release, and triggers the publish workflow. A human approval gate on the `qa-approval` environment ensures releases are intentional. Publishing to PyPI requires a separate approval on the `pypi` environment.
+
+Before merging to `main`:
+
+1. Ensure all tests pass (`make test`)
+2. Perform the [manual tests](MANUAL_TESTING.md) to verify functionality
+3. Use [conventional commits](https://www.conventionalcommits.org/) to control version bumps (see [Commit Message Conventions](#commit-message-conventions))
+
+After merge, the pipeline automatically handles version bumping, changelog generation, tagging, and publishing to PyPI. If no version-bumping commits are detected, the release steps are skipped entirely.
