@@ -184,4 +184,3 @@ jobs:
           packages-dir: workspace-cli/dist/
           skip-existing: true
           attestations: false
-
