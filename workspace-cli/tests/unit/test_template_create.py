@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.utils.ui import validate_ssh_key_file
 
 # =============================================================================
@@ -586,7 +587,7 @@ class TestCreateNewTemplateMetadata:
                 "workspace_cli.commands.setup_interactive.create_template_interactive",
                 return_value={
                     "containerEnv": {},
-                    "cli_version": "2.0.0",
+                    "cli_version": __version__,
                     "aws_profile_map": {},
                 },
             ),
@@ -618,7 +619,7 @@ class TestCreateNewTemplateMetadata:
 
         template_data = {
             "containerEnv": {},
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "aws_profile_map": {},
         }
 
@@ -658,7 +659,7 @@ class TestCreateNewTemplateMetadata:
                 "workspace_cli.commands.setup_interactive.create_template_interactive",
                 return_value={
                     "containerEnv": {},
-                    "cli_version": "2.0.0",
+                    "cli_version": __version__,
                     "aws_profile_map": {},
                 },
             ),

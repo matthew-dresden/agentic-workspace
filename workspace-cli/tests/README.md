@@ -63,6 +63,27 @@ make functional-test-report
 
 ## Writing Tests
 
+### Template Version Fixtures
+
+A template is compatible only when its `cli_version` major matches the running
+CLI's major version. Never hard-code a version literal in a template fixture —
+import the value you need from `tests/version_fixtures.py`, which derives every
+version from `workspace_cli.__version__`:
+
+| Constant | Meaning |
+| --- | --- |
+| `CURRENT_CLI_VERSION` | What the running CLI stamps on a template it writes — compatible |
+| `COMPATIBLE_MINOR_VERSION` | Same major, higher minor — compatible |
+| `COMPATIBLE_PATCH_VERSION` | Same major, higher patch — compatible |
+| `OLDER_COMPATIBLE_VERSION` | Same major, ordered before the CLI — compatible and out of date, so upgrade paths run |
+| `NEWER_MAJOR_VERSION` | One major above the CLI — deliberately incompatible |
+| `NEWER_MAJOR_CLI_VERSION` | Two majors above the CLI; patch it in as the CLI's version to make a `NEWER_MAJOR_VERSION` template look like it came from an older, incompatible major |
+
+Fixtures that represent a template written by the current CLI use
+`workspace_cli.__version__` directly. Fixtures that must be rejected use
+`NEWER_MAJOR_VERSION` so the rejection path stays exercised as the CLI's version
+changes.
+
 ### Unit Tests
 
 - Place unit tests in the `tests/unit/` directory

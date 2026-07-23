@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.utils.constants import (
     CATALOG_ENTRY_FILENAME,
     DEFAULT_NO_PROXY,
@@ -97,7 +98,7 @@ class TestWriteJsonFile:
             "containerEnv": {
                 "AWS_CONFIG_ENABLED": "true",
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         write_json_file(file_path, data)
@@ -257,7 +258,7 @@ class TestWriteProjectFiles:
                 "PAGER": "cat",
                 "AWS_DEFAULT_OUTPUT": "json",
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         data.update(overrides)
         return data
@@ -308,7 +309,7 @@ class TestWriteProjectFiles:
 
         assert data["template_name"] == "my-template"
         assert data["template_path"] == "/home/user/.templates/my-template.json"
-        assert data["cli_version"] == "2.0.0"
+        assert data["cli_version"] == __version__
 
     def test_env_vars_json_sorted_keys(self, tmp_path):
         """Test that containerEnv keys are sorted alphabetically."""
@@ -355,7 +356,7 @@ class TestWriteProjectFiles:
 
         assert "# Template: my-template" in content
         assert "# Template Path: /path/to/tmpl" in content
-        assert "# CLI Version: 2.0.0" in content
+        assert f"# CLI Version: {__version__}" in content
         assert "# Generated:" in content
 
     def test_shell_env_exports_sorted(self, tmp_path):

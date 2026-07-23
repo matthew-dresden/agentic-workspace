@@ -8,6 +8,7 @@ import json
 import subprocess
 from unittest.mock import MagicMock, patch
 
+from workspace_cli import __version__
 from workspace_cli.utils.ui import validate_ssh_key_file
 
 # =============================================================================
@@ -273,8 +274,6 @@ class TestCreateTemplateInteractiveEndToEnd:
 
     def test_cli_version_included(self):
         """CLI version is included in template."""
-        from workspace_cli import __version__
-
         result = self._run_token_flow()
         assert result["cli_version"] == __version__
 
@@ -293,7 +292,7 @@ class TestSaveTemplateMetadata:
 
         template_data = {
             "containerEnv": {"TEST": "value"},
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "aws_profile_map": {},
         }
 

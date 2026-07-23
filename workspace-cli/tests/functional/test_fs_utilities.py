@@ -3,6 +3,7 @@
 import json
 import os
 
+from workspace_cli import __version__
 from workspace_cli.utils.constants import (
     CATALOG_ENTRY_FILENAME,
     ENV_VARS_FILENAME,
@@ -39,7 +40,7 @@ class TestWriteJsonFileEndToEnd:
                     "role_name": "DeveloperAccess",
                 }
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         file_path = str(tmp_path / "template.json")
@@ -70,7 +71,7 @@ class TestWriteJsonFileEndToEnd:
                 "AWS_CONFIG_ENABLED": "true",
                 "DEVELOPER_NAME": "Developer",
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         file_path = str(tmp_path / ENV_VARS_FILENAME)

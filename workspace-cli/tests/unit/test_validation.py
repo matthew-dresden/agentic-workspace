@@ -5,6 +5,7 @@ import os
 import tempfile
 from unittest.mock import patch
 
+from workspace_cli import __version__
 from workspace_cli.utils.validation import (
     ValidationResult,
     _read_shell_env,
@@ -31,15 +32,15 @@ class TestParseShellEnv:
 
     def test_extracts_metadata_template_name(self):
         """Test that template name is extracted from comment header."""
-        content = "# Template: my-template\n# CLI Version: 2.0.0\nexport FOO='bar'\n"
+        content = f"# Template: my-template\n# CLI Version: {__version__}\nexport FOO='bar'\n"
         result = parse_shell_env(content)
         assert result.template_name == "my-template"
 
     def test_extracts_metadata_cli_version(self):
         """Test that CLI version is extracted from comment header."""
-        content = "# Template: test\n# CLI Version: 2.0.0\nexport FOO='bar'\n"
+        content = f"# Template: test\n# CLI Version: {__version__}\nexport FOO='bar'\n"
         result = parse_shell_env(content)
-        assert result.cli_version == "2.0.0"
+        assert result.cli_version == __version__
 
     def test_extracts_metadata_template_path(self):
         """Test that template path is extracted from comment header."""
@@ -84,7 +85,7 @@ class TestValidationResult:
             metadata_present=True,
             template_name="test",
             template_path="/path",
-            cli_version="2.0.0",
+            cli_version=__version__,
             template_found=True,
             validated_template=None,
             missing_template_keys={},
@@ -112,7 +113,7 @@ class TestValidationResult:
             metadata_present=True,
             template_name="test",
             template_path="/path",
-            cli_version="2.0.0",
+            cli_version=__version__,
             template_found=False,
             validated_template=None,
             missing_template_keys={},
@@ -126,7 +127,7 @@ class TestValidationResult:
             metadata_present=True,
             template_name="test",
             template_path="/path",
-            cli_version="2.0.0",
+            cli_version=__version__,
             template_found=True,
             validated_template=None,
             missing_template_keys={"EXTRA_KEY": "value"},
@@ -140,7 +141,7 @@ class TestValidationResult:
             metadata_present=True,
             template_name="test",
             template_path="/path",
-            cli_version="2.0.0",
+            cli_version=__version__,
             template_found=True,
             validated_template=None,
             missing_template_keys={},
@@ -154,7 +155,7 @@ class TestValidationResult:
             metadata_present=True,
             template_name="test",
             template_path="/path",
-            cli_version="2.0.0",
+            cli_version=__version__,
             template_found=True,
             validated_template=None,
             missing_template_keys={"KEY_B": "value_b"},
@@ -181,7 +182,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value_a"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value_a'\nexport KEY_B='value_b'\n"
         template_data = {"containerEnv": {"KEY_A": "value_a"}}
@@ -210,7 +211,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value_a", "KEY_B": "value_b"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value_a'\n"
         template_data = {"containerEnv": {"KEY_A": "value_a", "KEY_B": "value_b"}}
@@ -239,7 +240,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value", "GIT_AUTH_METHOD": "ssh"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value'\nexport GIT_AUTH_METHOD='ssh'\n"
         template_data = {"containerEnv": {"KEY_A": "value", "GIT_AUTH_METHOD": "ssh"}}
@@ -268,7 +269,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value", "AWS_CONFIG_ENABLED": "false"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value'\nexport AWS_CONFIG_ENABLED='false'\n"
         template_data = {"containerEnv": {"KEY_A": "value", "AWS_CONFIG_ENABLED": "false"}}
@@ -297,7 +298,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value", "AWS_CONFIG_ENABLED": "true"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value'\nexport AWS_CONFIG_ENABLED='true'\n"
         template_data = {"containerEnv": {"KEY_A": "value", "AWS_CONFIG_ENABLED": "true"}}
@@ -326,7 +327,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value", "HOST_PROXY": "false"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value'\nexport HOST_PROXY='false'\n"
         template_data = {"containerEnv": {"KEY_A": "value", "HOST_PROXY": "false"}}
@@ -355,7 +356,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "value", "HOST_PROXY": "true"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='value'\nexport HOST_PROXY='true'\n"
         template_data = {"containerEnv": {"KEY_A": "value", "HOST_PROXY": "true"}}
@@ -384,7 +385,7 @@ class TestStep0BaseKeyCheck:
             "containerEnv": {"KEY_A": "x", "KEY_B": "y"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         shell_env_content = "export KEY_A='x'\nexport KEY_B='y'\n"
         template_data = {"containerEnv": {"KEY_A": "x", "KEY_B": "y"}}
@@ -431,7 +432,7 @@ class TestStep1MetadataValidation:
             "containerEnv": {},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -457,7 +458,7 @@ class TestStep1MetadataValidation:
         config_data = {
             "containerEnv": {},
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -523,13 +524,13 @@ class TestStep2LocateTemplate:
             "containerEnv": {"KEY": "val"},
             "template_name": "my-template",
             "template_path": "/home/user/.workspace-templates/my-template.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         template_data = {
             "containerEnv": {"KEY": "val"},
             "template_name": "my-template",
             "template_path": "/home/user/.workspace-templates/my-template.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -553,7 +554,7 @@ class TestStep2LocateTemplate:
             "containerEnv": {},
             "template_name": "nonexistent",
             "template_path": "/path/nonexistent.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -587,13 +588,13 @@ class TestStep3TemplateComparison:
             "containerEnv": {"EXISTING": "val"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         template_data = {
             "containerEnv": {"EXISTING": "val", "NEW_KEY": "new_value"},
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -619,13 +620,13 @@ class TestStep3TemplateComparison:
             "containerEnv": env,
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
         template_data = {
             "containerEnv": env.copy(),
             "template_name": "test",
             "template_path": "/path/test.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -649,7 +650,7 @@ class TestStep3TemplateComparison:
             "containerEnv": {"KEY": "val"},
             "template_name": "missing",
             "template_path": "/path/missing.json",
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
         }
 
         with (
@@ -714,7 +715,7 @@ class TestStep2LocateTemplateReal:
                 "containerEnv": {"KEY_A": "val"},
                 "template_name": "my-template",
                 "template_path": template_file,
-                "cli_version": "2.0.0",
+                "cli_version": __version__,
             }
             with open(template_file, "w") as f:
                 json.dump(template_data, f)

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.commands.code import (
     IDE_CONFIG,
     _handle_missing_metadata,
@@ -21,7 +22,7 @@ _NO_ISSUES = ValidationResult(
     metadata_present=True,
     template_name="test",
     template_path="/path/test.json",
-    cli_version="2.0.0",
+    cli_version=__version__,
     template_found=True,
     validated_template={"containerEnv": {}},
     missing_template_keys={},
@@ -324,7 +325,7 @@ def test_regenerate_shell_env_calls_write(
     mock_popen.return_value = mock_process
     mock_load.return_value = {
         "containerEnv": {"KEY": "val"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
         "template_name": "test",
         "template_path": "/some/path",
     }
@@ -387,7 +388,7 @@ def test_regenerate_does_not_modify_json(
     mock_popen.return_value = mock_process
     mock_load.return_value = {
         "containerEnv": {"KEY": "val"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
         "template_name": "test",
         "template_path": "/some/path",
     }
@@ -459,7 +460,7 @@ def test_validation_called_when_files_exist(mock_popen, mock_which, mock_detect,
         "containerEnv": {},
         "template_name": "t",
         "template_path": "/p",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = _NO_ISSUES
 
@@ -517,14 +518,14 @@ def test_template_not_found_exits_with_error(mock_detect, mock_load, mock_isfile
         "containerEnv": {},
         "template_name": "missing",
         "template_path": "/p",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = ValidationResult(
         missing_base_keys={},
         metadata_present=True,
         template_name="missing",
         template_path="/home/user/.workspace-templates/missing.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=False,
         validated_template=None,
         missing_template_keys={},
@@ -622,20 +623,20 @@ def test_missing_vars_option2_adds_vars_only(
         "containerEnv": {"EXISTING": "val", "NEW_KEY": "new_val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_load.return_value = {
         "containerEnv": {"EXISTING": "val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = ValidationResult(
         missing_base_keys={},
         metadata_present=True,
         template_name="test",
         template_path="/path/test.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=True,
         validated_template=validated_template,
         missing_template_keys={"NEW_KEY": "new_val"},
@@ -684,20 +685,20 @@ def test_missing_vars_open_without_changes_skips_writes(
         "containerEnv": {"EXISTING": "val", "NEW_KEY": "new_val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_load.return_value = {
         "containerEnv": {"EXISTING": "val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = ValidationResult(
         missing_base_keys={},
         metadata_present=True,
         template_name="test",
         template_path="/path/test.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=True,
         validated_template=validated_template,
         missing_template_keys={"NEW_KEY": "new_val"},
@@ -750,20 +751,20 @@ def test_missing_vars_option1_adds_vars_and_replaces_devcontainer(
         "containerEnv": {"EXISTING": "val", "NEW_KEY": "new_val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_load.return_value = {
         "containerEnv": {"EXISTING": "val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = ValidationResult(
         missing_base_keys={},
         metadata_present=True,
         template_name="test",
         template_path="/path/test.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=True,
         validated_template=validated_template,
         missing_template_keys={"NEW_KEY": "new_val"},
@@ -803,20 +804,20 @@ def test_step4_displays_missing_variables(
         "containerEnv": {"EXISTING": "val", "MISSING_VAR": "default_val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_load.return_value = {
         "containerEnv": {"EXISTING": "val"},
         "template_name": "test",
         "template_path": "/path/test.json",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     mock_detect.return_value = ValidationResult(
         missing_base_keys={"MISSING_VAR": "default_val"},
         metadata_present=True,
         template_name="test",
         template_path="/path/test.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=True,
         validated_template=validated_template,
         missing_template_keys={},

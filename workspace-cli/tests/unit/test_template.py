@@ -31,6 +31,8 @@ from workspace_cli.commands.template import (
 from workspace_cli.utils.constants import TEMPLATES_DIR
 from workspace_cli.utils.template import ensure_templates_dir
 
+from tests.version_fixtures import NEWER_MAJOR_VERSION, OLDER_COMPATIBLE_VERSION
+
 
 # Basic functionality tests
 def test_ensure_templates_dir():
@@ -108,7 +110,7 @@ def test_save_template():
 
 def test_load_template_no_existing_file():
     """Test load_template when no existing env file — no confirmation prompt."""
-    mock_template_data = {"containerEnv": {"TEST": "val"}, "cli_version": "2.0.0"}
+    mock_template_data = {"containerEnv": {"TEST": "val"}, "cli_version": __version__}
 
     with (
         patch("os.path.exists", side_effect=lambda p: "templates" in p),
@@ -131,7 +133,7 @@ def test_load_template_no_existing_file():
 
 def test_load_template_overwrite_accepted():
     """Test load_template when existing env file and user accepts overwrite."""
-    mock_template_data = {"containerEnv": {"TEST": "val"}, "cli_version": "2.0.0"}
+    mock_template_data = {"containerEnv": {"TEST": "val"}, "cli_version": __version__}
     mock_confirm = MagicMock()
     mock_confirm.ask.return_value = True
 
@@ -166,10 +168,10 @@ def test_load_template_overwrite_declined():
 
 def test_load_template_calls_validate_template():
     """Test that load_template calls validate_template before write_project_files."""
-    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0"}
+    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": __version__}
     validated_data = {
         "containerEnv": {"K": "v", "ADDED": "by_validate"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
 
     with (
@@ -191,7 +193,7 @@ def test_load_template_calls_validate_template():
 
 def test_load_template_passes_name_and_path_to_write():
     """Test that load_template passes template_name and template_path to write_project_files."""
-    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0"}
+    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": __version__}
 
     with (
         patch("os.path.exists", side_effect=lambda p: "templates" in p),
@@ -222,7 +224,7 @@ def test_load_template_passes_name_and_path_to_write():
 def test_list_templates(mock_ensure, mock_listdir, capsys):
     with (
         patch("builtins.open", MagicMock()),
-        patch("json.load", return_value={"cli_version": "1.0.0"}),
+        patch("json.load", return_value={"cli_version": __version__}),
     ):
         list_templates()
 
@@ -275,14 +277,14 @@ def test_create_new_template(mock_exists, mock_ensure_dir, mock_create_interacti
     """Test creating a new template."""
     mock_create_interactive.return_value = {
         "containerEnv": {"TEST": "value"},
-        "cli_version": "1.0.0",
+        "cli_version": __version__,
     }
 
     create_new_template("test-template")
 
     mock_ensure_dir.assert_called_once()
     mock_create_interactive.assert_called_once()
-    mock_save.assert_called_once_with({"containerEnv": {"TEST": "value"}, "cli_version": "1.0.0"}, "test-template")
+    mock_save.assert_called_once_with({"containerEnv": {"TEST": "value"}, "cli_version": __version__}, "test-template")
 
 
 @patch("workspace_cli.commands.template.ensure_templates_dir")
@@ -399,10 +401,10 @@ def test_upgrade_already_current_version(capsys):
 
 def test_upgrade_calls_validate_template():
     """Test that upgrade_template_file calls validate_template."""
-    mock_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0-alpha.1"}
+    mock_data = {"containerEnv": {"K": "v"}, "cli_version": OLDER_COMPATIBLE_VERSION}
     validated = {
         "containerEnv": {"K": "v", "ADDED": "by_validate"},
-        "cli_version": "2.0.0-alpha.1",
+        "cli_version": OLDER_COMPATIBLE_VERSION,
     }
 
     with (
@@ -423,7 +425,7 @@ def test_upgrade_calls_validate_template():
 
 def test_upgrade_updates_cli_version():
     """Test that upgrade updates cli_version to current version."""
-    mock_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0-alpha.1"}
+    mock_data = {"containerEnv": {"K": "v"}, "cli_version": OLDER_COMPATIBLE_VERSION}
 
     with (
         patch("os.path.exists", return_value=True),
@@ -445,7 +447,7 @@ def test_upgrade_updates_cli_version():
 
 def test_upgrade_saves_template_file():
     """Test that upgrade saves to the correct template path."""
-    mock_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0-alpha.1"}
+    mock_data = {"containerEnv": {"K": "v"}, "cli_version": OLDER_COMPATIBLE_VERSION}
 
     with (
         patch("os.path.exists", return_value=True),
@@ -466,7 +468,7 @@ def test_upgrade_saves_template_file():
 
 def test_upgrade_success_message(capsys):
     """Test that upgrade outputs the correct success message."""
-    mock_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0-alpha.1"}
+    mock_data = {"containerEnv": {"K": "v"}, "cli_version": OLDER_COMPATIBLE_VERSION}
 
     with (
         patch("os.path.exists", return_value=True),
@@ -487,9 +489,9 @@ def test_upgrade_success_message(capsys):
     assert "workspace code" in captured.err
 
 
-def test_upgrade_v1x_rejected_by_validate():
-    """Test that v1.x templates are rejected via validate_template()."""
-    mock_data = {"containerEnv": {"K": "v"}, "cli_version": "1.0.0"}
+def test_upgrade_incompatible_major_rejected_by_validate():
+    """Test that templates from a different major are rejected via validate_template()."""
+    mock_data = {"containerEnv": {"K": "v"}, "cli_version": NEWER_MAJOR_VERSION}
 
     with (
         patch("os.path.exists", return_value=True),
@@ -571,7 +573,7 @@ def test_list_templates_with_templates():
         patch("os.path.exists", return_value=True),
         patch("os.listdir", return_value=["template1.json", "template2.json"]),
         patch("builtins.open", mock_open()),
-        patch("json.load", side_effect=[{"cli_version": "1.0.0"}, {}]),
+        patch("json.load", side_effect=[{"cli_version": __version__}, {}]),
         patch(
             "workspace_cli.commands.template.COLORS",
             {"CYAN": "", "GREEN": "", "RESET": ""},
@@ -580,7 +582,7 @@ def test_list_templates_with_templates():
     ):
         list_templates()
         mock_print.assert_any_call("Available templates:")
-        mock_print.assert_any_call("  - template1 (created with CLI version 1.0.0)")
+        mock_print.assert_any_call(f"  - template1 (created with CLI version {__version__})")
         mock_print.assert_any_call("  - template2 (created with CLI version unknown)")
 
 
@@ -651,9 +653,9 @@ def test_save_template_adds_version():
         assert saved_data["cli_version"] == __version__
 
 
-def test_load_template_v1x_rejected_by_validate():
-    """Test that v1.x templates are rejected via validate_template()."""
-    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": "1.0.0"}
+def test_load_template_incompatible_major_rejected_by_validate():
+    """Test that templates from a different major are rejected via validate_template()."""
+    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": NEWER_MAJOR_VERSION}
 
     with (
         patch("os.path.exists", side_effect=lambda p: "templates" in p),
@@ -699,7 +701,7 @@ def test_save_template_confirm_cancel():
 
 def test_load_template_success_message(capsys):
     """Test that load_template outputs success message."""
-    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0"}
+    mock_template_data = {"containerEnv": {"K": "v"}, "cli_version": __version__}
 
     with (
         patch("os.path.exists", side_effect=lambda p: "templates" in p),
@@ -743,7 +745,7 @@ def test_list_templates_json_exception():
 
 def test_create_new_template_overwrite():
     """Test create_new_template with overwrite confirmation."""
-    template_data = {"containerEnv": {"TEST": "value"}, "cli_version": "1.0.0"}
+    template_data = {"containerEnv": {"TEST": "value"}, "cli_version": __version__}
     mock_confirm = MagicMock()
     mock_confirm.ask.return_value = True
 
@@ -762,7 +764,7 @@ def test_create_new_template_overwrite():
 
 def test_load_template_create_new_env_file():
     """Test load_template when creating new env file — no overwrite prompt."""
-    template_data = {"containerEnv": {"K": "v"}, "cli_version": "2.0.0"}
+    template_data = {"containerEnv": {"K": "v"}, "cli_version": __version__}
 
     with (
         patch("os.path.exists", side_effect=lambda p: "templates" in p),
@@ -913,7 +915,7 @@ def test_view_template_prints_known_and_custom(capsys):
             "GIT_USER": "alice",
             "MY_CUSTOM": "custom-val",
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -927,7 +929,7 @@ def test_view_template_prints_known_and_custom(capsys):
     output = capsys.readouterr().out
     assert "test-tmpl" in output
     assert "Path:" in output
-    assert "2.0.0" in output
+    assert __version__ in output
     assert "DEVELOPER_NAME" in output
     assert "Alice" in output
     assert "GIT_USER" in output
@@ -951,7 +953,7 @@ def test_view_template_separates_known_and_custom(capsys):
             "DEVELOPER_NAME": "Bob",
             "EXTRA_THING": "extra",
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -973,7 +975,7 @@ def test_view_template_empty_containerenv(capsys):
     """view_template handles empty containerEnv gracefully."""
     template_data = {
         "containerEnv": {},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1006,7 +1008,7 @@ def test_view_template_shows_aws_profiles(capsys):
                 "role_name": "DeveloperAccess",
             }
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1042,7 +1044,7 @@ def test_view_template_shows_aws_profiles_when_disabled(capsys):
                 "role_name": "ReadOnly",
             }
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1074,7 +1076,7 @@ def test_view_template_shows_multiple_aws_profiles(capsys):
                 "account_name": "dev-account",
             },
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1098,7 +1100,7 @@ def test_view_template_no_aws_profiles(capsys):
     """view_template does not show AWS Profiles section when aws_profile_map is absent."""
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1118,7 +1120,7 @@ def test_view_template_empty_aws_profiles(capsys):
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice"},
         "aws_profile_map": {},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1143,7 +1145,7 @@ def test_view_template_shows_ssh_key(capsys):
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice", "GIT_AUTH_METHOD": "ssh"},
         "ssh_private_key": "/Users/alice/.ssh/id_rsa",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1164,7 +1166,7 @@ def test_view_template_hides_ssh_key_when_token_auth(capsys):
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice", "GIT_AUTH_METHOD": "token"},
         "ssh_private_key": "/Users/alice/.ssh/id_rsa",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1184,7 +1186,7 @@ def test_view_template_hides_ssh_key_when_empty(capsys):
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice", "GIT_AUTH_METHOD": "ssh"},
         "ssh_private_key": "",
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1203,7 +1205,7 @@ def test_view_template_hides_ssh_key_when_missing(capsys):
     """view_template does not show SSH key section when ssh_private_key key is absent."""
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice", "GIT_AUTH_METHOD": "ssh"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
     with (
         patch("os.path.exists", return_value=True),
@@ -1245,9 +1247,9 @@ def test_edit_template_loads_validates_edits_and_saves():
     """edit_template loads template, validates, calls edit_interactive, and saves."""
     template_data = {
         "containerEnv": {"DEVELOPER_NAME": "Alice"},
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
     }
-    edited_data = {"containerEnv": {"DEVELOPER_NAME": "Bob"}, "cli_version": "2.0.0"}
+    edited_data = {"containerEnv": {"DEVELOPER_NAME": "Bob"}, "cli_version": __version__}
 
     with (
         patch("os.path.exists", return_value=True),

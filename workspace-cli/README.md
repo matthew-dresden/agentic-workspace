@@ -177,7 +177,9 @@ workspace template delete template1 template2
 workspace template upgrade my-template
 ```
 
-When using templates created with older versions of the CLI, the tool will automatically detect version mismatches and provide options to:
+Templates record the CLI version that created them in a `cli_version` field. A template is compatible when its **major version matches the running CLI's major version** — minor and patch differences are always compatible. A template from a different major is rejected with a non-zero exit code and an error telling you to recreate it with `workspace template create <name>`.
+
+Within a compatible major, when using templates created with older versions of the CLI, the tool will automatically detect version mismatches and provide options to:
 - Upgrade the profile to the current version
 - Create a new profile from scratch
 - Try to use the profile anyway (with a warning)

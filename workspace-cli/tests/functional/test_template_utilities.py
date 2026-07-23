@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.utils.constants import TEMPLATES_DIR
 from workspace_cli.utils.fs import resolve_project_root
 from workspace_cli.utils.template import (
@@ -41,7 +42,7 @@ class TestGetTemplateNamesEndToEnd:
             for name in ["alpha", "beta", "gamma"]:
                 filepath = os.path.join(tmpdir, f"{name}.json")
                 with open(filepath, "w") as f:
-                    json.dump({"cli_version": "2.0.0"}, f)
+                    json.dump({"cli_version": __version__}, f)
 
             # Also create a non-json file that should be ignored
             with open(os.path.join(tmpdir, "readme.txt"), "w") as f:
@@ -105,7 +106,7 @@ class TestValidateTemplateEndToEnd:
                 "HOST_PROXY_URL": "",
                 "PAGER": "cat",
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "test-template",
             "template_path": "/templates/test.json",
             "aws_profile_map": {},

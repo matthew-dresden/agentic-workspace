@@ -9,11 +9,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.utils.template import validate_template
+
+from tests.version_fixtures import NEWER_MAJOR_CLI_VERSION, NEWER_MAJOR_VERSION
 
 
 def _full_template(**overrides):
-    """Build a fully valid v2 template for functional testing."""
+    """Build a fully valid template stamped with the running CLI version."""
     template = {
         "containerEnv": {
             "AWS_CONFIG_ENABLED": "true",
@@ -31,7 +34,7 @@ def _full_template(**overrides):
             "HOST_PROXY_URL": "",
             "PAGER": "cat",
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
         "template_name": "functional-test",
         "template_path": "/templates/functional.json",
         "aws_profile_map": {},
@@ -50,7 +53,7 @@ class TestValidTemplatePassesAllPhases:
 
         assert result["containerEnv"]["GIT_AUTH_METHOD"] == "token"
         assert result["containerEnv"]["GIT_TOKEN"] == "ghp_functional_test_token"
-        assert result["cli_version"] == "2.0.0"
+        assert result["cli_version"] == __version__
         assert result["template_name"] == "functional-test"
         assert result["aws_profile_map"] == {}
 
@@ -91,12 +94,22 @@ class TestValidTemplatePassesAllPhases:
 class TestStructuralRejection:
     """Templates with structural issues are rejected immediately."""
 
-    def test_rejects_v1_template(self):
-        """v1.x template is rejected with migration message."""
-        template = _full_template(cli_version="1.14.1")
+    def test_rejects_template_from_newer_major(self):
+        """Template from a newer major is rejected with migration message."""
+        template = _full_template(cli_version=NEWER_MAJOR_VERSION)
 
         with pytest.raises(SystemExit) as exc_info:
             validate_template(template)
+
+        assert exc_info.value.code == 1
+
+    def test_rejects_template_from_older_major(self):
+        """Template from an older major is rejected with migration message."""
+        template = _full_template(cli_version=NEWER_MAJOR_VERSION)
+
+        with patch("workspace_cli.utils.template.__version__", NEWER_MAJOR_CLI_VERSION):
+            with pytest.raises(SystemExit) as exc_info:
+                validate_template(template)
 
         assert exc_info.value.code == 1
 

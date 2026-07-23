@@ -5,6 +5,8 @@ import os
 import subprocess
 import tempfile
 
+from workspace_cli import __version__
+
 # All EXAMPLE_ENV_VALUES keys — used to create test data that passes validation
 _FULL_CONTAINER_ENV = {
     "AWS_CONFIG_ENABLED": "true",
@@ -49,7 +51,7 @@ def _setup_validation_env(temp_dir, container_env, template_name="test"):
         json.dump(
             {
                 "containerEnv": container_env,
-                "cli_version": "2.0.0",
+                "cli_version": __version__,
                 "template_name": template_name,
                 "template_path": template_path,
             },
@@ -63,7 +65,7 @@ def _setup_validation_env(temp_dir, container_env, template_name="test"):
             {
                 "template_name": template_name,
                 "template_path": template_path,
-                "cli_version": "2.0.0",
+                "cli_version": __version__,
                 "containerEnv": container_env,
             },
             f,
@@ -74,7 +76,7 @@ def _setup_validation_env(temp_dir, container_env, template_name="test"):
     with open(shell_env_path, "w") as f:
         f.write(f"# Template: {template_name}\n")
         f.write(f"# Template Path: {template_path}\n")
-        f.write("# CLI Version: 2.0.0\n")
+        f.write(f"# CLI Version: {__version__}\n")
         for key, value in sorted(container_env.items()):
             f.write(f"export {key}='{value}'\n")
 

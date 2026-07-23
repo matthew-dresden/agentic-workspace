@@ -9,7 +9,10 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
+from workspace_cli import __version__
 from workspace_cli.commands.template import load_template
+
+from tests.version_fixtures import NEWER_MAJOR_VERSION
 
 # =============================================================================
 # Source inspection tests — verify implementation patterns
@@ -116,7 +119,7 @@ class TestLoadTemplateEndToEnd:
         """Loading a template generates both env JSON and shell.env."""
         template_data = {
             "containerEnv": self._base_container_env(),
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "test-tmpl",
             "template_path": "/tmp/test.json",
             "aws_profile_map": {},
@@ -152,7 +155,7 @@ class TestLoadTemplateEndToEnd:
         """Loading a template ensures .gitignore has required entries."""
         template_data = {
             "containerEnv": self._base_container_env(),
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "test",
             "template_path": "/tmp/test.json",
             "aws_profile_map": {},
@@ -177,7 +180,7 @@ class TestLoadTemplateEndToEnd:
         """Loading a template with AWS enabled writes aws-profile-map.json."""
         template_data = {
             "containerEnv": self._base_container_env(AWS_CONFIG_ENABLED="true"),
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "aws-test",
             "template_path": "/tmp/test.json",
             "aws_profile_map": {"default": {"region": "us-east-1"}},
@@ -202,7 +205,7 @@ class TestLoadTemplateEndToEnd:
         template_data = {
             "containerEnv": self._base_container_env(GIT_AUTH_METHOD="ssh"),
             "ssh_private_key": key_content,
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "ssh-test",
             "template_path": "/tmp/test.json",
             "aws_profile_map": {},
@@ -224,7 +227,7 @@ class TestLoadTemplateEndToEnd:
         """Overwrite prompt uses questionary.confirm, not confirm_action."""
         template_data = {
             "containerEnv": self._base_container_env(),
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "test",
             "template_path": "/tmp/test.json",
             "aws_profile_map": {},
@@ -251,11 +254,11 @@ class TestLoadTemplateEndToEnd:
         mock_qconfirm.assert_called_once()
         assert "overwrite" in mock_qconfirm.call_args[0][0].lower()
 
-    def test_load_v1x_template_rejected(self, tmp_path):
-        """v1.x template is rejected by validate_template with clear error."""
+    def test_load_template_from_different_major_rejected(self, tmp_path):
+        """Template from a different major is rejected by validate_template."""
         template_data = {
             "containerEnv": {"KEY": "val"},
-            "cli_version": "1.14.0",
+            "cli_version": NEWER_MAJOR_VERSION,
             "template_name": "old",
             "template_path": "/tmp/old.json",
         }

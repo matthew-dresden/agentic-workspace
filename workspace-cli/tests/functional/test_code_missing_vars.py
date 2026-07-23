@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.commands.code import handle_code
 from workspace_cli.utils.validation import ValidationResult
 
@@ -22,7 +23,7 @@ _NO_ISSUES = ValidationResult(
     metadata_present=True,
     template_name="test",
     template_path="/path/test.json",
-    cli_version="2.0.0",
+    cli_version=__version__,
     template_found=True,
     validated_template={"containerEnv": {}},
     missing_template_keys={},
@@ -219,7 +220,7 @@ def test_regenerate_shell_env_creates_shell_env_from_json():
                 {
                     "template_name": "test-template",
                     "template_path": "/templates/test-template.json",
-                    "cli_version": "2.0.0",
+                    "cli_version": __version__,
                     "containerEnv": {
                         "DEVELOPER_NAME": "tester",
                         "GIT_USER": "testuser",
@@ -264,7 +265,7 @@ def test_regenerate_shell_env_creates_shell_env_from_json():
 
         # Verify metadata header
         assert "# Template: test-template" in content
-        assert "# CLI Version: 2.0.0" in content
+        assert f"# CLI Version: {__version__}" in content
 
         # Verify sorted exports
         assert "export DEVELOPER_NAME='tester'" in content
@@ -278,7 +279,7 @@ def test_regenerate_shell_env_creates_shell_env_from_json():
         with open(env_file, "r") as f:
             json_after = json.load(f)
         assert json_after["containerEnv"]["DEVELOPER_NAME"] == "tester"
-        assert json_after["cli_version"] == "2.0.0"
+        assert json_after["cli_version"] == __version__
 
 
 def test_regenerate_shell_env_with_proxy_vars():
@@ -294,7 +295,7 @@ def test_regenerate_shell_env_with_proxy_vars():
                 {
                     "template_name": "proxy-template",
                     "template_path": "/templates/proxy.json",
-                    "cli_version": "2.0.0",
+                    "cli_version": __version__,
                     "containerEnv": {
                         "HOST_PROXY": "true",
                         "HOST_PROXY_URL": "http://proxy.example.com:8080",

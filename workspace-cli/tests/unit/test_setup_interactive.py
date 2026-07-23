@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import os
 import sys
 from unittest.mock import mock_open, patch
@@ -7,6 +8,10 @@ from unittest.mock import mock_open, patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 import pytest
+
+from workspace_cli import __version__
+
+from tests.version_fixtures import NEWER_MAJOR_VERSION
 
 
 # Tests for KeyboardInterrupt and None response handling
@@ -373,7 +378,7 @@ def test_prompt_env_values_claude_code_enabled_false(mock_select, mock_text, moc
 
 
 @patch("questionary.select")
-@patch("workspace_cli.commands.setup_interactive.__version__", "1.0.0")
+@patch("workspace_cli.commands.setup_interactive.__version__", NEWER_MAJOR_VERSION)
 def test_load_template_version_mismatch_upgrade(mock_select):
     """Test load_template_from_file with version mismatch - upgrade choice."""
     from workspace_cli.commands.setup_interactive import load_template_from_file
@@ -382,7 +387,7 @@ def test_load_template_version_mismatch_upgrade(mock_select):
 
     with patch(
         "builtins.open",
-        mock_open(read_data='{"containerEnv": {"TEST": "value"}, "cli_version": "0.1.0"}'),
+        mock_open(read_data=json.dumps({"containerEnv": {"TEST": "value"}, "cli_version": __version__})),
     ):
         with patch("os.path.exists", return_value=True):
             result = load_template_from_file("test-template")
@@ -393,7 +398,7 @@ def test_load_template_version_mismatch_upgrade(mock_select):
 
 @patch("questionary.select")
 @patch("workspace_cli.commands.setup_interactive.create_template_interactive")
-@patch("workspace_cli.commands.setup_interactive.__version__", "1.0.0")
+@patch("workspace_cli.commands.setup_interactive.__version__", NEWER_MAJOR_VERSION)
 def test_load_template_version_mismatch_create_new(mock_create, mock_select):
     """Test load_template_from_file with version mismatch - create new choice."""
     from workspace_cli.commands.setup_interactive import load_template_from_file
@@ -403,7 +408,7 @@ def test_load_template_version_mismatch_create_new(mock_create, mock_select):
 
     with patch(
         "builtins.open",
-        mock_open(read_data='{"containerEnv": {"TEST": "value"}, "cli_version": "0.1.0"}'),
+        mock_open(read_data=json.dumps({"containerEnv": {"TEST": "value"}, "cli_version": __version__})),
     ):
         with patch("os.path.exists", return_value=True):
             result = load_template_from_file("test-template")
@@ -413,7 +418,7 @@ def test_load_template_version_mismatch_create_new(mock_create, mock_select):
 
 
 @patch("questionary.select")
-@patch("workspace_cli.commands.setup_interactive.__version__", "1.0.0")
+@patch("workspace_cli.commands.setup_interactive.__version__", NEWER_MAJOR_VERSION)
 def test_load_template_version_mismatch_exit(mock_select):
     """Test load_template_from_file with version mismatch - exit choice."""
     from workspace_cli.commands.setup_interactive import load_template_from_file
@@ -422,7 +427,7 @@ def test_load_template_version_mismatch_exit(mock_select):
 
     with patch(
         "builtins.open",
-        mock_open(read_data='{"containerEnv": {"TEST": "value"}, "cli_version": "0.1.0"}'),
+        mock_open(read_data=json.dumps({"containerEnv": {"TEST": "value"}, "cli_version": __version__})),
     ):
         with patch("os.path.exists", return_value=True):
             with pytest.raises(SystemExit):
@@ -430,7 +435,7 @@ def test_load_template_version_mismatch_exit(mock_select):
 
 
 @patch("questionary.select")
-@patch("workspace_cli.commands.setup_interactive.__version__", "1.0.0")
+@patch("workspace_cli.commands.setup_interactive.__version__", NEWER_MAJOR_VERSION)
 def test_load_template_version_mismatch_use_anyway(mock_select):
     """Test load_template_from_file with version mismatch - use anyway choice."""
     from workspace_cli.commands.setup_interactive import load_template_from_file
@@ -439,7 +444,7 @@ def test_load_template_version_mismatch_use_anyway(mock_select):
 
     with patch(
         "builtins.open",
-        mock_open(read_data='{"containerEnv": {"TEST": "value"}, "cli_version": "0.1.0"}'),
+        mock_open(read_data=json.dumps({"containerEnv": {"TEST": "value"}, "cli_version": __version__})),
     ):
         with patch("os.path.exists", return_value=True):
             result = load_template_from_file("test-template")

@@ -82,6 +82,25 @@ def validate_template(template_data: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def _parse_version(version_str: str, description: str) -> semver.VersionInfo:
+    """Parse a semver string, failing fast when it is not valid semver.
+
+    Args:
+        version_str: The version string to parse.
+        description: What the version describes, used in the error message.
+
+    Returns:
+        The parsed version.
+
+    Raises:
+        SystemExit: If version_str is not valid semver.
+    """
+    try:
+        return semver.VersionInfo.parse(version_str)
+    except ValueError:
+        exit_with_error(f"Invalid {description}: {version_str}")
+
+
 def _validate_structure(data: Dict[str, Any]) -> None:
     """Validate required top-level keys and types.
 
@@ -97,29 +116,19 @@ def _validate_structure(data: Dict[str, Any]) -> None:
     if not isinstance(data["containerEnv"], dict):
         exit_with_error("Template key 'containerEnv' must be a dict")
 
-    # cli_version must exist and be v2.x
+    # cli_version must exist and share the running CLI's major version
     if "cli_version" not in data:
         exit_with_error("Template is missing required key: cli_version")
 
-    cli_version_str = data["cli_version"]
-    try:
-        ver = semver.VersionInfo.parse(cli_version_str)
-    except ValueError:
-        exit_with_error(f"Invalid cli_version format: {cli_version_str}")
+    ver = _parse_version(data["cli_version"], "cli_version format")
+    current_ver = _parse_version(__version__, "current CLI version")
 
-    if ver.major < 2:
+    if ver.major != current_ver.major:
         exit_with_error(
             f"This template was created with CLI v{ver.major}.x and is not compatible "
-            "with v2.0.0. Please recreate your template using "
+            f"with v{current_ver.major}.x. Please recreate your template using "
             "`workspace template create <name>`"
         )
-    if ver.major > 2:
-        try:
-            current_ver = semver.VersionInfo.parse(__version__)
-        except ValueError:
-            exit_with_error(f"Invalid current CLI version: {__version__}")
-        if ver.major != current_ver.major:
-            exit_with_error(f"Template version {cli_version_str} is incompatible with CLI version {__version__}")
 
     # template_name and template_path must exist
     for key in ("template_name", "template_path"):
@@ -314,13 +323,10 @@ def _detect_conflicts(data: Dict[str, Any]) -> None:
     from workspace_cli.commands.setup import EXAMPLE_ENV_VALUES
 
     container_env = data["containerEnv"]
-    template_version_str = data.get("cli_version", "")
 
-    try:
-        template_ver = semver.VersionInfo.parse(template_version_str)
-        current_ver = semver.VersionInfo.parse(__version__)
-    except ValueError:
-        return
+    # _validate_structure already proved both versions are valid semver.
+    template_ver = _parse_version(data["cli_version"], "cli_version format")
+    current_ver = _parse_version(__version__, "current CLI version")
 
     # Only check for conflicts if template was created with an older version
     if template_ver >= current_ver:

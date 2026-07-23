@@ -13,12 +13,21 @@ import copy
 from unittest.mock import MagicMock, patch
 
 import pytest
+import semver
 
+from workspace_cli import __version__
 from workspace_cli.utils.template import validate_template
+
+from tests.version_fixtures import (
+    COMPATIBLE_MINOR_VERSION,
+    COMPATIBLE_PATCH_VERSION,
+    NEWER_MAJOR_CLI_VERSION,
+    NEWER_MAJOR_VERSION,
+)
 
 
 def _valid_template(**overrides):
-    """Build a minimal valid v2 template dict."""
+    """Build a minimal valid template dict stamped with the running CLI version."""
     template = {
         "containerEnv": {
             "AWS_CONFIG_ENABLED": "true",
@@ -36,7 +45,7 @@ def _valid_template(**overrides):
             "HOST_PROXY_URL": "",
             "PAGER": "cat",
         },
-        "cli_version": "2.0.0",
+        "cli_version": __version__,
         "template_name": "test-template",
         "template_path": "/templates/test.json",
     }
@@ -84,20 +93,30 @@ class TestStructuralValidation:
         with pytest.raises(SystemExit):
             validate_template(template)
 
-    def test_v1_cli_version_exits_with_migration_message(self, capsys):
-        """v1.x cli_version exits with migration error message."""
-        template = _valid_template(cli_version="1.14.0")
+    def test_older_major_cli_version_exits_with_migration_message(self, capsys):
+        """A template from an older major exits with the migration error message."""
+        template = _valid_template(cli_version=NEWER_MAJOR_VERSION)
+        older_major = semver.VersionInfo.parse(NEWER_MAJOR_VERSION).major
+        current_major = semver.VersionInfo.parse(NEWER_MAJOR_CLI_VERSION).major
+        with patch("workspace_cli.utils.template.__version__", NEWER_MAJOR_CLI_VERSION):
+            with pytest.raises(SystemExit):
+                validate_template(template)
+        captured = capsys.readouterr()
+        assert f"v{older_major}.x" in captured.err
+        assert f"v{current_major}.x" in captured.err
+        assert "template create" in captured.err
+
+    def test_newer_major_cli_version_exits_with_migration_message(self, capsys):
+        """A template from a newer major exits with the migration error message."""
+        template = _valid_template(cli_version=NEWER_MAJOR_VERSION)
+        template_major = semver.VersionInfo.parse(NEWER_MAJOR_VERSION).major
+        current_major = semver.VersionInfo.parse(__version__).major
         with pytest.raises(SystemExit):
             validate_template(template)
         captured = capsys.readouterr()
-        assert "v1.x" in captured.err or "v1" in captured.err
+        assert f"v{template_major}.x" in captured.err
+        assert f"v{current_major}.x" in captured.err
         assert "template create" in captured.err
-
-    def test_v0_cli_version_exits(self):
-        """v0.x cli_version exits non-zero."""
-        template = _valid_template(cli_version="0.9.0")
-        with pytest.raises(SystemExit):
-            validate_template(template)
 
     def test_invalid_cli_version_format_exits(self):
         """Non-semver cli_version exits non-zero."""
@@ -119,23 +138,30 @@ class TestStructuralValidation:
         with pytest.raises(SystemExit):
             validate_template(template)
 
-    def test_v2_minor_version_passes(self):
-        """v2.1.0 passes structural validation."""
-        template = _valid_template(cli_version="2.1.0")
+    def test_same_major_higher_minor_passes(self):
+        """A same-major, higher-minor cli_version passes structural validation."""
+        template = _valid_template(cli_version=COMPATIBLE_MINOR_VERSION)
         result = validate_template(template)
-        assert result["cli_version"] == "2.1.0"
+        assert result["cli_version"] == COMPATIBLE_MINOR_VERSION
 
-    def test_v2_patch_version_passes(self):
-        """v2.0.1 passes structural validation."""
-        template = _valid_template(cli_version="2.0.1")
+    def test_same_major_higher_patch_passes(self):
+        """A same-major, higher-patch cli_version passes structural validation."""
+        template = _valid_template(cli_version=COMPATIBLE_PATCH_VERSION)
         result = validate_template(template)
-        assert result["cli_version"] == "2.0.1"
+        assert result["cli_version"] == COMPATIBLE_PATCH_VERSION
 
-    def test_v3_cli_version_exits_when_major_mismatch(self):
-        """v3.x cli_version exits with incompatible error when CLI is v2.x."""
-        template = _valid_template(cli_version="3.0.0")
-        with pytest.raises(SystemExit):
-            validate_template(template)
+    def test_current_cli_version_passes(self):
+        """A template written by the running CLI passes structural validation."""
+        template = _valid_template(cli_version=__version__)
+        result = validate_template(template)
+        assert result["cli_version"] == __version__
+
+    def test_invalid_current_cli_version_exits(self):
+        """An unparseable running CLI version exits non-zero."""
+        template = _valid_template()
+        with patch("workspace_cli.utils.template.__version__", "not-a-version"):
+            with pytest.raises(SystemExit):
+                validate_template(template)
 
 
 # =============================================================================
@@ -609,42 +635,30 @@ class TestConflictDetection:
         """New known key that conflicts with custom key — user keeps existing value."""
         template = _valid_template()
         # Simulate an older template version that doesn't know about HOST_PROXY
-        template["cli_version"] = "2.0.0"
+        template["cli_version"] = __version__
         # HOST_PROXY already present with expected value — no conflict
         result = validate_template(template)
         assert result["containerEnv"]["HOST_PROXY"] == "false"
 
-    @patch("workspace_cli.utils.template.__version__", "2.1.0")
+    @patch("workspace_cli.utils.template.__version__", COMPATIBLE_MINOR_VERSION)
     def test_older_template_with_valid_nondefault_constrained_value(self):
         """Older template with valid but non-default constrained value is kept."""
-        template = _valid_template(cli_version="2.0.0")
+        template = _valid_template(cli_version=__version__)
         # PAGER has valid value "less" (not the default "cat") — user intentionally set it
         template["containerEnv"]["PAGER"] = "less"
 
         result = validate_template(template)
         assert result["containerEnv"]["PAGER"] == "less"
 
-    @patch("workspace_cli.utils.template.__version__", "2.1.0")
+    @patch("workspace_cli.utils.template.__version__", COMPATIBLE_MINOR_VERSION)
     def test_older_template_with_nondefault_nonconstrained_value(self):
         """Older template with non-default value for non-constrained key passes."""
-        template = _valid_template(cli_version="2.0.0")
+        template = _valid_template(cli_version=__version__)
         # DEVELOPER_NAME has non-default value but is not a constrained key
         template["containerEnv"]["DEVELOPER_NAME"] = "Custom Dev Name"
 
         result = validate_template(template)
         assert result["containerEnv"]["DEVELOPER_NAME"] == "Custom Dev Name"
-
-    def test_conflict_detection_skipped_for_invalid_version(self):
-        """Conflict detection returns early for invalid version strings."""
-        template = _valid_template()
-        # Set a cli_version that can't be parsed as semver
-        # but first it must pass structural validation, which checks cli_version
-        # So we need to patch __version__ to something invalid to trigger the
-        # ValueError catch in _detect_conflicts
-        template["cli_version"] = "2.0.0"
-        with patch("workspace_cli.utils.template.__version__", "not-a-version"):
-            result = validate_template(template)
-        assert result is not None
 
 
 # =============================================================================

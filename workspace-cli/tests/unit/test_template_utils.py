@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli.utils.constants import TEMPLATES_DIR
 
 
@@ -135,13 +136,13 @@ class TestValidateTemplate:
                 "HOST_PROXY_URL": "",
                 "PAGER": "cat",
             },
-            "cli_version": "2.0.0",
+            "cli_version": __version__,
             "template_name": "test-template",
             "template_path": "/templates/test.json",
         }
         result = validate_template(data)
         assert result["containerEnv"]["AWS_CONFIG_ENABLED"] == "true"
-        assert result["cli_version"] == "2.0.0"
+        assert result["cli_version"] == __version__
 
     def test_rejects_empty_dict(self):
         """Test validate_template rejects empty dict (missing required keys)."""

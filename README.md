@@ -291,7 +291,18 @@ This allows you to maintain consistent configurations across multiple projects f
 
 #### Template Version Compatibility
 
-Templates are saved with version information that tracks which CLI version created them. When loading a template created with an older version of the CLI, the tool automatically detects version mismatches and provides options:
+Templates are saved with a `cli_version` field that records which CLI version created them.
+
+A template is compatible when its **major version matches the running CLI's major version**. Minor and patch differences are always compatible, so a template created by any `X.*.*` CLI works with any other `X.*.*` CLI. A template whose major version differs is rejected with a non-zero exit code and an error telling you to recreate it:
+
+```
+This template was created with CLI v1.x and is not compatible with v0.x.
+Please recreate your template using `workspace template create <name>`
+```
+
+This check runs on `workspace template load`, `workspace template upgrade`, `workspace template edit`, and the validation step of `workspace code`.
+
+Within a compatible major, when a template was created by an older CLI version the tool detects the mismatch and offers options:
 
 - **Upgrade the template**: Updates the template to the current CLI format while preserving settings
 - **Create a new template**: Starts fresh with the current CLI version

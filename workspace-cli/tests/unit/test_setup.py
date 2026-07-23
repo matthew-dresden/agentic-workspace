@@ -46,6 +46,8 @@ from workspace_cli.commands.setup_interactive import (
 )
 from workspace_cli.utils.catalog import CatalogEntry, EntryInfo
 
+from tests.version_fixtures import OLDER_COMPATIBLE_VERSION
+
 # ─── register_command ───────────────────────────────────────────────────────
 
 
@@ -343,7 +345,7 @@ class TestRunInformationalValidation:
                 "containerEnv": dict(EXAMPLE_ENV_VALUES),
                 "template_name": "test",
                 "template_path": "/path/test.json",
-                "cli_version": "2.0.0",
+                "cli_version": __version__,
             }
             with open(os.path.join(tmpdir, "devcontainer-environment-variables.json"), "w") as f:
                 json.dump(env_data, f)
@@ -352,7 +354,7 @@ class TestRunInformationalValidation:
             lines = [f"export {k}='{v}'" for k, v in EXAMPLE_ENV_VALUES.items()]
             lines.append("# Template: test")
             lines.append("# Template Path: /path/test.json")
-            lines.append("# CLI Version: 2.0.0")
+            lines.append(f"# CLI Version: {__version__}")
             with open(os.path.join(tmpdir, "shell.env"), "w") as f:
                 f.write("\n".join(lines) + "\n")
 
@@ -1477,13 +1479,12 @@ def test_upgrade_template_real():
     mock_template_data = {
         "containerEnv": {"AWS_CONFIG_ENABLED": "true", "DEFAULT_GIT_BRANCH": "main"},
         "aws_profile_map": {"default": {"region": "us-west-2"}},
-        "cli_version": "1.0.0",
+        "cli_version": OLDER_COMPATIBLE_VERSION,
     }
 
-    with patch("workspace_cli.commands.setup_interactive.__version__", "2.0.0"):
-        result = upgrade_template(mock_template_data)
+    result = upgrade_template(mock_template_data)
 
-    assert result["cli_version"] == "2.0.0"
+    assert result["cli_version"] == __version__
     assert result["containerEnv"] == mock_template_data["containerEnv"]
     assert result["aws_profile_map"] == mock_template_data["aws_profile_map"]
 
@@ -1492,48 +1493,41 @@ def test_upgrade_template_with_env_values_real():
     mock_template_data = {
         "env_values": {"AWS_CONFIG_ENABLED": "true", "DEFAULT_GIT_BRANCH": "main"},
         "aws_profile_map": {"default": {"region": "us-west-2"}},
-        "cli_version": "1.0.0",
+        "cli_version": OLDER_COMPATIBLE_VERSION,
     }
 
-    with patch("workspace_cli.commands.setup_interactive.__version__", "2.0.0"):
-        result = upgrade_template(mock_template_data)
+    result = upgrade_template(mock_template_data)
 
-    assert result["cli_version"] == "2.0.0"
+    assert result["cli_version"] == __version__
     assert result["containerEnv"] == mock_template_data["env_values"]
 
 
 def test_upgrade_template_without_env_values_real():
-    mock_template_data = {"cli_version": "1.0.0"}
+    mock_template_data = {"cli_version": OLDER_COMPATIBLE_VERSION}
 
-    with (
-        patch("workspace_cli.commands.setup_interactive.__version__", "2.0.0"),
-        patch(
-            "workspace_cli.commands.setup_interactive.prompt_env_values",
-            return_value={"AWS_CONFIG_ENABLED": "false"},
-        ),
+    with patch(
+        "workspace_cli.commands.setup_interactive.prompt_env_values",
+        return_value={"AWS_CONFIG_ENABLED": "false"},
     ):
         result = upgrade_template(mock_template_data)
 
-    assert result["cli_version"] == "2.0.0"
+    assert result["cli_version"] == __version__
     assert result["containerEnv"] == {"AWS_CONFIG_ENABLED": "false"}
 
 
 def test_upgrade_template_with_aws_enabled_no_profile_real():
     mock_template_data = {
         "containerEnv": {"AWS_CONFIG_ENABLED": "true", "DEFAULT_GIT_BRANCH": "main"},
-        "cli_version": "1.0.0",
+        "cli_version": OLDER_COMPATIBLE_VERSION,
     }
 
-    with (
-        patch("workspace_cli.commands.setup_interactive.__version__", "2.0.0"),
-        patch(
-            "workspace_cli.commands.setup_interactive.prompt_aws_profile_map",
-            return_value={"default": {"region": "us-west-2"}},
-        ),
+    with patch(
+        "workspace_cli.commands.setup_interactive.prompt_aws_profile_map",
+        return_value={"default": {"region": "us-west-2"}},
     ):
         result = upgrade_template(mock_template_data)
 
-    assert result["cli_version"] == "2.0.0"
+    assert result["cli_version"] == __version__
     assert result["aws_profile_map"] == {"default": {"region": "us-west-2"}}
 
 

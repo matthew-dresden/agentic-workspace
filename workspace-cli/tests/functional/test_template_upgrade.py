@@ -17,6 +17,8 @@ import pytest
 from workspace_cli import __version__
 from workspace_cli.commands.template import upgrade_template_file
 
+from tests.version_fixtures import NEWER_MAJOR_VERSION, OLDER_COMPATIBLE_VERSION
+
 # =============================================================================
 # Source inspection tests — verify implementation patterns
 # =============================================================================
@@ -135,11 +137,11 @@ class TestUpgradeTemplateEndToEnd:
             result = json.load(f)
         assert result == template_data
 
-    def test_v1x_template_rejected(self):
-        """v1.x template rejected by validate_template()."""
+    def test_template_from_different_major_rejected(self):
+        """Template from a different major is rejected by validate_template()."""
         template_data = {
             "containerEnv": _base_container_env(),
-            "cli_version": "1.14.0",
+            "cli_version": NEWER_MAJOR_VERSION,
             "template_name": "old",
             "template_path": "/some/path",
         }
@@ -149,11 +151,11 @@ class TestUpgradeTemplateEndToEnd:
             with pytest.raises(SystemExit):
                 upgrade_template_file("old-template")
 
-    def test_v2x_upgrade_updates_cli_version(self, capsys):
-        """v2.x template with older version — cli_version updated."""
+    def test_same_major_older_version_upgrade_updates_cli_version(self, capsys):
+        """Same-major template at an older version — cli_version updated."""
         template_data = {
             "containerEnv": _base_container_env(),
-            "cli_version": "2.0.0-alpha.1",
+            "cli_version": OLDER_COMPATIBLE_VERSION,
             "template_name": "test",
             "template_path": "/some/path",
         }
@@ -171,7 +173,7 @@ class TestUpgradeTemplateEndToEnd:
         """Success message includes template name, version, and workspace code reference."""
         template_data = {
             "containerEnv": _base_container_env(),
-            "cli_version": "2.0.0-alpha.1",
+            "cli_version": OLDER_COMPATIBLE_VERSION,
             "template_name": "my-template",
             "template_path": "/some/path",
         }
@@ -195,7 +197,7 @@ class TestUpgradeTemplateEndToEnd:
         """Upgrade modifies only the template file, not project files."""
         template_data = {
             "containerEnv": _base_container_env(),
-            "cli_version": "2.0.0-alpha.1",
+            "cli_version": OLDER_COMPATIBLE_VERSION,
             "template_name": "test",
             "template_path": "/some/path",
         }

@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 import pytest
 
+from workspace_cli import __version__
 from workspace_cli import cli
 from workspace_cli.commands.code import handle_code
 from workspace_cli.utils.fs import load_json_config
@@ -121,7 +122,7 @@ def test_handle_code(
         metadata_present=True,
         template_name="test",
         template_path="/path/test.json",
-        cli_version="2.0.0",
+        cli_version=__version__,
         template_found=True,
         validated_template={"containerEnv": {}},
         missing_template_keys={},
