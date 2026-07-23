@@ -1,0 +1,269 @@
+"""Tests for S1.1.4 — Remove Deprecated Commands & Features.
+
+These tests verify that deprecated commands, flags, files, and patterns
+have been fully removed from the codebase.
+"""
+
+import importlib
+import os
+import re
+from unittest.mock import patch
+
+import pytest
+import semver
+
+
+class TestEnvCommandRemoved:
+    """Verify the env subcommand module has been deleted."""
+
+    def test_env_module_does_not_exist(self):
+        """commands/env.py should not be importable."""
+        with pytest.raises(ImportError):
+            importlib.import_module("workspace_cli.commands.env")
+
+    def test_env_not_registered_in_cli(self):
+        """The env subcommand should not be registered in the CLI parser."""
+        from workspace_cli.cli import main
+
+        with patch("sys.argv", ["workspace", "env", "export", "test.json", "-o", "out.sh"]):
+            with patch(
+                "workspace_cli.utils.version.check_for_updates",
+                return_value=True,
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                # argparse exits with code 2 for unrecognized commands
+                assert exc_info.value.code == 2
+
+
+class TestInstallCommandRemoved:
+    """Verify the install/uninstall commands have been deleted."""
+
+    def test_install_module_does_not_exist(self):
+        """commands/install.py should not be importable."""
+        with pytest.raises(ImportError):
+            importlib.import_module("workspace_cli.commands.install")
+
+    def test_install_not_registered_in_cli(self):
+        """The install subcommand should not be registered in the CLI parser."""
+        from workspace_cli.cli import main
+
+        with patch("sys.argv", ["workspace", "install"]):
+            with patch(
+                "workspace_cli.utils.version.check_for_updates",
+                return_value=True,
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 2
+
+    def test_uninstall_not_registered_in_cli(self):
+        """The uninstall subcommand should not be registered in the CLI parser."""
+        from workspace_cli.cli import main
+
+        with patch("sys.argv", ["workspace", "uninstall"]):
+            with patch(
+                "workspace_cli.utils.version.check_for_updates",
+                return_value=True,
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                assert exc_info.value.code == 2
+
+
+class TestBinCdevcontainerRemoved:
+    """Verify the bin/workspace shell script has been deleted."""
+
+    def test_bin_workspace_does_not_exist(self):
+        """bin/workspace file should not exist."""
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        bin_path = os.path.join(project_root, "bin", "workspace")
+        assert not os.path.exists(bin_path), f"bin/workspace still exists at {bin_path}"
+
+
+class TestYesFlagRemoved:
+    """Verify all -y/--yes argument definitions have been removed."""
+
+    def test_cli_main_parser_no_yes_flag(self):
+        """The main CLI parser should not accept -y/--yes."""
+        from workspace_cli.cli import main
+
+        with patch("sys.argv", ["workspace", "-y"]):
+            with patch(
+                "workspace_cli.utils.version.check_for_updates",
+                return_value=True,
+            ):
+                with pytest.raises(SystemExit) as exc_info:
+                    main()
+                # argparse exits with 2 for unrecognized args
+                assert exc_info.value.code == 2
+
+    def test_code_parser_no_yes_flag(self):
+        """The code command parser should not accept -y/--yes."""
+        import argparse
+
+        from workspace_cli.commands.code import register_command
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        register_command(subparsers)
+
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["code", "-y"])
+        assert exc_info.value.code == 2
+
+    def test_template_parser_no_yes_flag(self):
+        """The template command parser should not accept -y/--yes at any level."""
+        import argparse
+
+        from workspace_cli.commands.template import register_command
+
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers()
+        register_command(subparsers)
+
+        # Test at template level
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["template", "-y", "save", "test"])
+        assert exc_info.value.code == 2
+
+        # Test at save subcommand level
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["template", "save", "test", "-y"])
+        assert exc_info.value.code == 2
+
+        # Test at delete subcommand level
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["template", "delete", "test", "-y"])
+        assert exc_info.value.code == 2
+
+        # Test at create subcommand level
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["template", "create", "test", "-y"])
+        assert exc_info.value.code == 2
+
+        # Test at upgrade subcommand level
+        with pytest.raises(SystemExit) as exc_info:
+            parser.parse_args(["template", "upgrade", "test", "-y"])
+        assert exc_info.value.code == 2
+
+
+class TestVersionUpdated:
+    """Verify version and Python requirement updates."""
+
+    def test_cli_version_is_valid_semver(self):
+        """The CLI __version__ should be a valid semantic version."""
+        from workspace_cli import __version__
+
+        parsed = semver.Version.parse(__version__)
+        assert parsed is not None, f"__version__ '{__version__}' is not valid semver"
+
+    def test_pyproject_version_is_valid_semver(self):
+        """pyproject.toml should have a valid semantic version."""
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        pyproject_path = os.path.join(project_root, "pyproject.toml")
+
+        with open(pyproject_path, "r") as f:
+            content = f.read()
+
+        match = re.search(r'^version = "([^"]+)"', content, re.MULTILINE)
+        assert match is not None, "Could not find version field in pyproject.toml"
+
+        parsed = semver.Version.parse(match.group(1))
+        assert parsed is not None, f"pyproject.toml version '{match.group(1)}' is not valid semver"
+
+    def test_version_consistency(self):
+        """__init__.py and pyproject.toml versions must match."""
+        from workspace_cli import __version__
+
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        pyproject_path = os.path.join(project_root, "pyproject.toml")
+
+        with open(pyproject_path, "r") as f:
+            content = f.read()
+
+        match = re.search(r'^version = "([^"]+)"', content, re.MULTILINE)
+        assert match is not None, "Could not find version field in pyproject.toml"
+
+        assert __version__ == match.group(1), (
+            f"Version mismatch: __init__.py has '{__version__}' but pyproject.toml has '{match.group(1)}'"
+        )
+
+    def test_python_requires_3_10(self):
+        """pyproject.toml should require Python >= 3.10."""
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        pyproject_path = os.path.join(project_root, "pyproject.toml")
+
+        with open(pyproject_path, "r") as f:
+            content = f.read()
+
+        assert 'requires-python = ">=3.10"' in content
+        # Old Python versions should not be in classifiers
+        assert "Python :: 3.8" not in content
+        assert "Python :: 3.9" not in content
+
+
+class TestImportHygiene:
+    """Verify inline imports have been moved to module level."""
+
+    def test_no_inline_colors_imports_in_template(self):
+        """template.py should import COLORS at module level, not inline."""
+        import inspect
+
+        from workspace_cli.commands import template
+
+        source = inspect.getsource(template)
+
+        # Count occurrences of inline COLORS import inside function bodies
+        # Module-level imports happen before any def/class, so check for imports after def
+        lines = source.split("\n")
+        in_function = False
+        inline_colors_imports = 0
+        for line in lines:
+            stripped = line.strip()
+            if stripped.startswith("def ") or stripped.startswith("class "):
+                in_function = True
+            if in_function and "from workspace_cli.utils.ui import COLORS" in stripped:
+                inline_colors_imports += 1
+
+        assert inline_colors_imports == 0, (
+            f"Found {inline_colors_imports} inline COLORS imports in template.py function bodies"
+        )
+
+
+class TestInstallDirConstantRemoved:
+    """Verify INSTALL_DIR constant is removed since install command is gone."""
+
+    def test_install_dir_not_in_constants(self):
+        """INSTALL_DIR should be removed from constants.py since install/uninstall are removed."""
+        from workspace_cli.utils import constants
+
+        assert not hasattr(constants, "INSTALL_DIR"), "INSTALL_DIR should be removed from constants.py"
+
+
+class TestCliImportsClean:
+    """Verify cli.py does not import removed modules."""
+
+    def test_cli_does_not_import_env(self):
+        """cli.py should not import commands.env."""
+        import inspect
+
+        from workspace_cli import cli
+
+        source = inspect.getsource(cli)
+        assert "from workspace_cli.commands import" in source or "import" in source
+        # Ensure env is not in any import statement
+        assert (
+            "env" not in source.split("from workspace_cli.commands import")[1].split("\n")[0]
+            if "from workspace_cli.commands import" in source
+            else True
+        )
+
+    def test_cli_does_not_import_install(self):
+        """cli.py should not import commands.install."""
+        import inspect
+
+        from workspace_cli import cli
+
+        source = inspect.getsource(cli)
+        assert "install" not in source, "cli.py should not reference 'install'"

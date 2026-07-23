@@ -1,0 +1,433 @@
+name: Main Branch Validation
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: release-pipeline
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Main
+    runs-on: ubuntu-24.04
+    outputs:
+      has_release: ${{ steps.check-release.outputs.has_release }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Cache ASDF installation
+        uses: actions/cache@v4
+        with:
+          path: ~/.asdf
+          key: ${{ runner.os }}-asdf-v0.15.0-${{ hashFiles('.tool-versions') }}
+          restore-keys: |
+            ${{ runner.os }}-asdf-v0.15.0-
+
+      - name: Install ASDF
+        run: |
+          if [ ! -d ~/.asdf ]; then
+            git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0
+          fi
+          echo "$HOME/.asdf/bin" >> $GITHUB_PATH
+          echo "$HOME/.asdf/shims" >> $GITHUB_PATH
+          source $HOME/.asdf/asdf.sh
+        shell: bash
+
+      - name: Install ASDF plugins and tools
+        run: |
+          cd $GITHUB_WORKSPACE
+          source $HOME/.asdf/asdf.sh
+          cut -d' ' -f1 .tool-versions | xargs -I{} asdf plugin add {} || true
+          asdf plugin remove python 2>/dev/null || true
+          asdf install
+          asdf reshim
+        shell: bash
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/lib/python*/site-packages
+          key: ${{ runner.os }}-pip-${{ hashFiles('workspace-cli/requirements.txt', 'workspace-cli/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install CLI
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          pip install --upgrade pip
+          make install
+        shell: bash
+
+      - name: Run pre-commit checks
+        run: |
+          cd $GITHUB_WORKSPACE
+          source $HOME/.asdf/asdf.sh
+          make pre-commit-check
+        shell: bash
+
+      - name: Lint
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make lint
+        shell: bash
+
+      - name: Build
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make publish
+        shell: bash
+
+      - name: Run unit tests with coverage threshold
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make unit-test
+          coverage json
+          coverage_percent=$(python -c "import json; f=open('coverage.json'); print(json.load(f)['totals']['percent_covered'])")
+          echo "Coverage: $coverage_percent%"
+          if (( $(echo "$coverage_percent < 90" | bc -l) )); then
+            echo "Error: Code coverage is below 90% threshold ($coverage_percent%)"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Run functional tests
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make functional-test
+        shell: bash
+
+      - name: Validate catalog structure
+        run: |
+          cd $GITHUB_WORKSPACE
+          make validate-catalog
+        shell: bash
+
+      - name: Generate coverage report
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make coverage
+          make coverage-json
+        shell: bash
+
+      - name: Print coverage summary
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make coverage-text
+        shell: bash
+
+      - name: Check if release is needed
+        id: check-release
+        working-directory: ${{ github.workspace }}/workspace-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_VERSION=$(python -c "import importlib.metadata; print(importlib.metadata.version('agentic-workspace'))")
+          echo "Current version: $CURRENT_VERSION"
+
+          NEW_VERSION=$(python -m semantic_release version --print | sed 's/^v//')
+          echo "Computed version: ${NEW_VERSION:-<none>}"
+
+          # Ensure GITHUB_OUTPUT starts on a fresh line (semantic_release may write
+          # to GITHUB_OUTPUT without a trailing newline, which would corrupt our output)
+          echo "" >> "$GITHUB_OUTPUT"
+
+          if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
+            echo "No version-bumping commits detected since $CURRENT_VERSION."
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Version bump detected: $CURRENT_VERSION → $NEW_VERSION"
+            echo "has_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+        shell: bash
+
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: python
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:python"
+
+  manual-approval:
+    name: Manual QA Approval
+    if: ${{ needs.validate.outputs.has_release == 'true' }}
+    needs: [validate, codeql]
+    runs-on: ubuntu-24.04
+    environment:
+      name: qa-approval
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: QA Approval
+        run: echo "QA has been approved"
+
+  create-release:
+    name: Create Release
+    needs: [manual-approval]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Cache ASDF installation for release
+        uses: actions/cache@v4
+        with:
+          path: ~/.asdf
+          key: ${{ runner.os }}-asdf-release-v0.15.0-${{ hashFiles('.tool-versions') }}
+          restore-keys: |
+            ${{ runner.os }}-asdf-release-v0.15.0-
+            ${{ runner.os }}-asdf-v0.15.0-
+
+      - name: Install ASDF
+        run: |
+          if [ ! -d ~/.asdf ]; then
+            git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0
+          fi
+          echo "$HOME/.asdf/bin" >> $GITHUB_PATH
+          echo "$HOME/.asdf/shims" >> $GITHUB_PATH
+          source $HOME/.asdf/asdf.sh
+        shell: bash
+
+      - name: Install ASDF plugins and tools
+        run: |
+          cd $GITHUB_WORKSPACE
+          source $HOME/.asdf/asdf.sh
+          cut -d' ' -f1 .tool-versions | xargs -I{} asdf plugin add {} || true
+          asdf plugin remove python 2>/dev/null || true
+          asdf install
+          asdf reshim
+        shell: bash
+
+      - name: Cache Python dependencies for release
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/lib/python*/site-packages
+          key: ${{ runner.os }}-pip-release-${{ hashFiles('workspace-cli/requirements.txt', 'workspace-cli/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-release-
+            ${{ runner.os }}-pip-
+
+      - name: Install CLI and dependencies
+        working-directory: ${{ github.workspace }}/workspace-cli
+        run: |
+          pip install --upgrade pip
+          make install
+        shell: bash
+
+      - name: Compute next version
+        id: semantic-release
+        working-directory: ${{ github.workspace }}/workspace-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          CURRENT_VERSION=$(python -c "import importlib.metadata; print(importlib.metadata.version('agentic-workspace'))")
+          echo "Current version: $CURRENT_VERSION"
+
+          NEW_VERSION=$(python -m semantic_release version --print | sed 's/^v//')
+          echo "Computed version: ${NEW_VERSION:-<none>}"
+
+          # Ensure GITHUB_OUTPUT starts on a fresh line (semantic_release may write
+          # to GITHUB_OUTPUT without a trailing newline, which would corrupt our output)
+          echo "" >> "$GITHUB_OUTPUT"
+
+          if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
+            echo "No version-bumping commits detected since $CURRENT_VERSION. Skipping release."
+            echo "has_release=false" >> "$GITHUB_OUTPUT"
+            echo "version=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
+          else
+            echo "New release detected: $CURRENT_VERSION → $NEW_VERSION"
+            echo "has_release=true" >> "$GITHUB_OUTPUT"
+            echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Skip release
+        if: steps.semantic-release.outputs.has_release != 'true'
+        run: echo "No version-bumping commits since last release. Skipping release steps."
+        shell: bash
+
+      - name: Generate changelog and update version files
+        if: steps.semantic-release.outputs.has_release == 'true'
+        working-directory: ${{ github.workspace }}/workspace-cli
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use semantic-release to update pyproject.toml and CHANGELOG.md
+          # The --no-commit flag updates files without committing
+          python -m semantic_release version --no-push --no-vcs-release --no-commit
+
+          # Get the version that was just set in pyproject.toml
+          NEW_VERSION=$(grep '^version = ' pyproject.toml | sed 's/.*version = "\([^"]*\)".*/\1/')
+          echo "Updated version: $NEW_VERSION"
+
+          # Manually update __init__.py version to match pyproject.toml
+          sed -i "s/__version__ = \"[^\"]*\"/__version__ = \"$NEW_VERSION\"/" src/workspace_cli/__init__.py
+          echo "Updated __init__.py to version: $NEW_VERSION"
+
+          # Fix trailing whitespace in modified files
+          sed -i 's/[[:space:]]*$//' CHANGELOG.md pyproject.toml src/workspace_cli/__init__.py
+
+          # Clean up build artifacts created by semantic-release
+          rm -rf dist/ build/ src/workspace_cli.egg-info/
+        shell: bash
+
+      - name: Commit changelog and version bump
+        if: steps.semantic-release.outputs.has_release == 'true'
+        id: commit-changes
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the version that was updated in the previous step
+          VERSION=$(grep '^version = ' workspace-cli/pyproject.toml | sed 's/.*version = "\([^"]*\)".*/\1/')
+          echo "VERSION: $VERSION"
+          echo "✓ Version extracted successfully"
+
+          if [[ -z "$VERSION" ]]; then
+            echo "ERROR: version is empty. Exiting."
+            exit 1
+          fi
+          echo "✓ Version validation passed"
+
+          git config --global user.name "github-actions[bot]"
+          echo "✓ Git user name configured"
+
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          echo "✓ Git user email configured"
+
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+          echo "✓ Git remote URL configured"
+
+          # Check git status
+          echo "Git status before staging:"
+          git status --porcelain
+
+          # Stage the modified files first (with correct paths from repo root)
+          git add workspace-cli/CHANGELOG.md workspace-cli/pyproject.toml workspace-cli/src/workspace_cli/__init__.py
+          echo "✓ Files staged successfully"
+
+          # Check git status after staging
+          echo "Git status after staging:"
+          git status --porcelain
+
+          # Commit the changes on current branch first
+          git commit -m "chore(release): $VERSION"
+          echo "✓ Changes committed on main branch"
+
+          # Now create and checkout new branch from the commit
+          git checkout -b release-$VERSION
+          echo "✓ New branch 'release-$VERSION' created and checked out"
+
+          git push origin release-$VERSION
+          echo "✓ Branch pushed to origin"
+
+          PR_URL=$(gh pr create \
+            --title "Release $VERSION" \
+            --body "Automated release PR for version $VERSION" \
+            --base main \
+            --head release-$VERSION)
+          echo "✓ Pull request created: $PR_URL"
+
+          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          echo "✓ PR URL saved to GitHub output"
+
+          gh pr merge ${PR_URL} --admin --merge
+          echo "✓ Pull request merged successfully"
+        shell: bash
+
+      - name: Wait for PR to merge and create Git tag
+        if: steps.semantic-release.outputs.has_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PR_URL="${{ steps.commit-changes.outputs.pr_url }}"
+          PR_NUMBER=$(echo "$PR_URL" | grep -o '[0-9]\+$')
+          # Get the version from pyproject.toml since we're not using the semantic-release step output anymore
+          NEW_VERSION=$(grep '^version = ' workspace-cli/pyproject.toml | sed 's/.*version = "\([^"]*\)".*/\1/')
+
+          echo "Waiting for PR #$PR_NUMBER to be merged..."
+
+          MAX_ATTEMPTS=10
+          ATTEMPT=1
+          DELAY=3
+
+          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+            MERGED_AT=$(gh pr view "$PR_NUMBER" --json mergedAt -q '.mergedAt' || echo "")
+            if [[ -n "$MERGED_AT" && "$MERGED_AT" != "null" ]]; then
+              echo "✅ PR #$PR_NUMBER merged at $MERGED_AT"
+              break
+            fi
+
+            echo "⏳ Attempt $ATTEMPT/$MAX_ATTEMPTS: PR not merged yet, retrying in $DELAY seconds..."
+            sleep "$DELAY"
+            ATTEMPT=$((ATTEMPT + 1))
+            DELAY=$((DELAY * 2))
+          done
+
+          if [ "$ATTEMPT" -gt "$MAX_ATTEMPTS" ]; then
+            echo "⚠️ Timed out waiting for PR to merge, continuing anyway."
+          fi
+
+          git fetch --all
+          git checkout main
+          git pull origin main
+          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+          git push origin "$NEW_VERSION"
+
+          # Clean up the release branch
+          echo "Cleaning up release branch: release-$NEW_VERSION"
+          git push origin --delete release-$NEW_VERSION || echo "Branch already deleted or doesn't exist"
+        shell: bash
+
+      - name: Trigger publish workflow
+        if: steps.semantic-release.outputs.has_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEW_VERSION=$(grep '^version = ' workspace-cli/pyproject.toml | sed 's/.*version = "\([^"]*\)".*/\1/')
+          gh workflow run publish.yml -f tag="$NEW_VERSION"
+        shell: bash

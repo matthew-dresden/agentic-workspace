@@ -1,0 +1,82 @@
+[build-system]
+requires = ["setuptools>=78.1.1", "wheel>=0.46.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-workspace"
+version = "0.1.0"
+description = "CLI tool for managing agentic development workspaces and devcontainers"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+
+authors = [
+  { name = "Matthew Dresden", email = "contact@matthewdresden.com" }
+]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14"
+]
+
+dependencies = [
+  "pytest~=7.0",
+  "pytest-cov~=4.0",
+  "questionary~=2.0.0",
+  "semver~=3.0.0",
+  "ruff>=0.9.0",
+  "shtab>=1.7.0"
+]
+
+[project.scripts]
+workspace = "workspace_cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/matthew-dresden/agentic-workspace"
+Issues = "https://github.com/matthew-dresden/agentic-workspace/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.semantic_release]
+version_variables = ["src/workspace_cli/__init__.py:__version__"]
+version_toml = ["pyproject.toml:project.version"]
+build_command = "python -m build"
+tag_format = "{version}"
+major_on_zero = true
+branch = "main"
+upload_to_pypi = false
+upload_to_release = false
+commit_version_number = true
+
+[tool.semantic_release.changelog]
+changelog_file = "CHANGELOG.md"
+changelog_scope = false
+exclude_commit_patterns = []
+
+[tool.semantic_release.commit_parser_options]
+allowed_tags = [
+  "build",
+  "chore",
+  "ci",
+  "docs",
+  "feat",
+  "fix",
+  "perf",
+  "refactor",
+  "revert",
+  "security",
+  "style",
+  "test"
+]
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf", "security", "revert"]

@@ -1,0 +1,186 @@
+name: Publish to PyPI
+
+# Publishes to PyPI via Trusted Publishing (OIDC) -- no API token is stored.
+# Authentication comes from the `pypi` GitHub environment plus the
+# `id-token: write` permission on the publish job, which PyPI verifies against
+# the Trusted Publisher registered for this project.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g., 1.5.0)"
+        required: true
+        type: string
+
+concurrency:
+  group: release-pipeline
+  cancel-in-progress: false
+
+jobs:
+  validate-version:
+    name: Validate version format
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate semver format
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="${{ github.event.inputs.tag }}"
+          else
+            TAG_NAME="${{ github.ref_name }}"
+          fi
+
+          if ! [[ $TAG_NAME =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: $TAG_NAME. Version must follow semver format (e.g., 1.2.3) without any prefix."
+            echo "::error::Please use the format: MAJOR.MINOR.PATCH (e.g., 0.1.0, 1.0.0, 2.3.4)"
+            exit 1
+          fi
+          echo "Version format is valid: $TAG_NAME"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+  build-and-publish:
+    name: Build and publish to PyPI
+    needs: validate-version
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/agentic-workspace
+    permissions:
+      id-token: write # Required for PyPI trusted publishing
+    env:
+      TAG_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref }}
+
+      - name: Cache system dependencies
+        id: cache-system-deps
+        uses: actions/cache@v4
+        with:
+          path: /tmp/apt-cache
+          key: system-deps-${{ runner.os }}-${{ runner.arch }}-v3
+
+      - name: Install system dependencies for Python build
+        run: |
+          # Configure apt to use our cache directory
+          sudo mkdir -p /tmp/apt-cache
+          echo 'Dir::Cache::Archives "/tmp/apt-cache";' | sudo tee /etc/apt/apt.conf.d/99cache
+
+          # Check if we have a cache hit by looking for cached files
+          if [ -d /tmp/apt-cache ] && [ "$(ls -A /tmp/apt-cache)" ]; then
+            echo "Cache hit detected - restoring packages from cache"
+            sudo dpkg -i /tmp/apt-cache/*.deb || true
+            sudo apt-get install -f -y  # Fix any broken dependencies
+          else
+            echo "No cache found - downloading packages"
+            sudo apt-get update
+            sudo apt-get install -y build-essential libssl-dev zlib1g-dev \
+              libbz2-dev libreadline-dev libsqlite3-dev curl \
+              libncursesw5-dev xz-utils tk-dev libxml2-dev \
+              libxmlsec1-dev libffi-dev liblzma-dev bc
+          fi
+
+      - name: Fix cache permissions
+        if: always()
+        run: |
+          # Fix permissions on cache directories with appropriate security
+          sudo find /tmp/apt-cache -type d -exec chmod 755 {} + 2>/dev/null || true
+          sudo find /tmp/apt-cache -type f -exec chmod 644 {} + 2>/dev/null || true
+          sudo chown -R $USER:$USER /tmp/apt-cache 2>/dev/null || true
+
+      - name: Cache ASDF installation
+        uses: actions/cache@v4
+        with:
+          path: ~/.asdf
+          key: ${{ runner.os }}-asdf-v0.15.0-${{ hashFiles('.tool-versions') }}
+          restore-keys: |
+            ${{ runner.os }}-asdf-v0.15.0-
+
+      - name: Install ASDF
+        run: |
+          if [ ! -d ~/.asdf ]; then
+            git clone https://github.com/asdf-vm/asdf.git ~/.asdf --branch v0.15.0
+          fi
+          echo "$HOME/.asdf/bin" >> $GITHUB_PATH
+          echo "$HOME/.asdf/shims" >> $GITHUB_PATH
+          source $HOME/.asdf/asdf.sh
+
+      - name: Install ASDF plugins and tools
+        run: |
+          cd $GITHUB_WORKSPACE
+          source $HOME/.asdf/asdf.sh
+          cut -d' ' -f1 .tool-versions | xargs -I{} asdf plugin add {} || true
+          asdf install
+          asdf reshim
+
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/lib/python*/site-packages
+          key: ${{ runner.os }}-pip-${{ hashFiles('workspace-cli/requirements.txt', 'workspace-cli/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install build dependencies
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          pip install --upgrade pip
+          make install
+          asdf reshim
+
+      - name: Verify version consistency
+        run: |
+          TAG_VERSION="${{ env.TAG_VERSION }}"
+          cd $GITHUB_WORKSPACE/workspace-cli
+
+          # Use Python regex parsing for robust version extraction
+          # This handles both single/double quotes and avoids grep pattern matching issues
+          INIT_VERSION=$(python -c "
+          import re
+          with open('src/workspace_cli/__init__.py', 'r') as f:
+              content = f.read()
+              match = re.search(r'__version__ = [\"\'](.*?)[\"\']', content)
+              print(match.group(1) if match else 'NOT_FOUND')
+          ")
+
+          TOML_VERSION=$(python -c "
+          import re
+          with open('pyproject.toml', 'r') as f:
+              content = f.read()
+              # Match 'version =' at start of line in [project] section for precision
+              match = re.search(r'^version = [\"\'](.*?)[\"\']', content, re.MULTILINE)
+              print(match.group(1) if match else 'NOT_FOUND')
+          ")
+
+          echo "Tag version: $TAG_VERSION"
+          echo "__init__.py version: $INIT_VERSION"
+          echo "pyproject.toml version: $TOML_VERSION"
+
+          if [[ "$TAG_VERSION" != "$INIT_VERSION" ]]; then
+            echo "::error::Version mismatch: tag ($TAG_VERSION) != __init__.py ($INIT_VERSION)"
+            exit 1
+          fi
+
+          if [[ "$TAG_VERSION" != "$TOML_VERSION" ]]; then
+            echo "::error::Version mismatch: tag ($TAG_VERSION) != pyproject.toml ($TOML_VERSION)"
+            exit 1
+          fi
+
+          echo "✅ Version consistency verified: $TAG_VERSION"
+
+      - name: Build package
+        run: |
+          cd $GITHUB_WORKSPACE/workspace-cli
+          make publish
+
+      - name: Publish to PyPI
+        id: publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: workspace-cli/dist/
+          skip-existing: true
+          attestations: false
